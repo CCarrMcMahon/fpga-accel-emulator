@@ -6,7 +6,9 @@ module uart_receiver #(
     input logic reset,
     input logic rx,
     output logic [7:0] data_out,
-    output logic data_ready
+    output logic data_ready,
+    output logic debug_baud_state,
+    output logic [1:0] debug_uart_state
 );
     /* Constants */
     localparam int BaudRateCounterMax = ClkFreq / BaudRate;
@@ -18,12 +20,11 @@ module uart_receiver #(
         BAUD_ENABLED
     } baud_state_t;
 
-    typedef enum logic [2:0] {
+    typedef enum logic [1:0] {
         UART_IDLE,
         UART_START,
         UART_DATA,
-        UART_STOP,
-        UART_DONE
+        UART_STOP
     } uart_state_t;
 
     /* Signals */
@@ -31,7 +32,8 @@ module uart_receiver #(
     baud_state_t baud_state;
     uart_state_t uart_state, uart_next_state;
     logic [2:0] data_bit_counter;
-
+    assign debug_baud_state = baud_state;
+    assign debug_uart_state = uart_state;
 
     // Baud Rate Generator
     always_ff @(posedge clk or posedge reset) begin
@@ -45,6 +47,8 @@ module uart_receiver #(
                 BAUD_ENABLED: begin
                     if (baud_rate_counter < BaudRateCounterMax) begin
                         baud_rate_counter <= baud_rate_counter + 1;
+                    end else begin
+                        baud_rate_counter <= 0;
                     end
                 end
                 default baud_rate_counter <= 0;
@@ -75,7 +79,7 @@ module uart_receiver #(
                     end
                 end
                 UART_START: begin
-                    if (baud_rate_counter == BaudRateCounterMax / 2) begin
+                    if (baud_rate_counter == (BaudRateCounterMax / 2)) begin
                         if (rx == 0) begin
                             data_bit_counter <= 0;
                             uart_next_state  <= UART_DATA;
@@ -101,17 +105,14 @@ module uart_receiver #(
                 UART_STOP: begin
                     if (baud_rate_counter == BaudRateCounterMax) begin
                         if (rx == 1) begin  // Stop bit detected (rx pulled high)
-                            uart_next_state <= UART_DONE;
+                            data_ready <= 1;
+                            uart_next_state <= UART_IDLE;
                         end else begin
                             uart_next_state <= UART_IDLE;
                         end
                     end else begin
                         uart_next_state <= UART_STOP;
                     end
-                end
-                UART_DONE: begin
-                    data_ready <= 1;
-                    uart_next_state <= UART_IDLE;
                 end
                 default: uart_state <= UART_IDLE;
             endcase
