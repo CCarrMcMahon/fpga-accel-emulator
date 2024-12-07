@@ -9,7 +9,7 @@ module fpga_accel_emulator (
     logic [7:0] data_out;
     logic data_ready;
 
-    logic debug_baud_state;
+    logic debug_baud_pulse_out;
     logic [1:0] debug_uart_state;
 
     // Instantiate the uart_receiver module
@@ -22,11 +22,11 @@ module fpga_accel_emulator (
         .rx(uart_txd_in),
         .data_out(data_out),
         .data_ready(data_ready),
-        .debug_baud_state(debug_baud_state),
+        .debug_baud_pulse_out(debug_baud_pulse_out),
         .debug_uart_state(debug_uart_state)
     );
 
-    assign ja[4:1] = {debug_uart_state, debug_baud_state, uart_txd_in};
+    assign ja[4:1] = {debug_uart_state, debug_baud_pulse_out, uart_txd_in};
 
     always_ff @(posedge clk100mhz or negedge cpu_resetn) begin
         if (!cpu_resetn) begin

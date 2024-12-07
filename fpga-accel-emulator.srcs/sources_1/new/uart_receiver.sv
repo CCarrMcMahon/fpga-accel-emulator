@@ -7,61 +7,44 @@ module uart_receiver #(
     input logic rx,
     output logic [7:0] data_out,
     output logic data_ready,
-    output logic debug_baud_state,
-    output logic [1:0] debug_uart_state
+    output logic debug_baud_pulse_out,  // TODO: Remove debug output
+    output logic [1:0] debug_uart_state  // TODO: Remove debug output
 );
-    /* Constants */
-    localparam int BaudRateCounterMax = ClkFreq / BaudRate;
-    localparam int BaudRateCounterBits = $clog2(BaudRateCounterMax + 1);
-
-    /* State Machine States */
-    typedef enum logic {
-        BAUD_DISABLED,
-        BAUD_ENABLED
-    } baud_state_t;
-
+    /* States */
     typedef enum logic [1:0] {
         UART_IDLE,
         UART_START,
         UART_DATA,
         UART_STOP
     } uart_state_t;
+    uart_state_t uart_state, uart_next_state;
 
     /* Signals */
-    logic [BaudRateCounterBits-1:0] baud_rate_counter;
-    baud_state_t baud_state;
-    uart_state_t uart_state, uart_next_state;
+    logic baud_clear;
+    logic baud_pulse_out;
     logic [2:0] data_bit_counter;
-    assign debug_baud_state = baud_state;
+
+    assign debug_baud_pulse_out = baud_pulse_out;
     assign debug_uart_state = uart_state;
 
-    // Baud Rate Generator
-    always_ff @(posedge clk or posedge reset) begin
-        if (reset) begin
-            baud_rate_counter <= 0;
-        end else begin
-            case (baud_state)
-                BAUD_DISABLED: begin
-                    baud_rate_counter <= 0;
-                end
-                BAUD_ENABLED: begin
-                    if (baud_rate_counter < BaudRateCounterMax) begin
-                        baud_rate_counter <= baud_rate_counter + 1;
-                    end else begin
-                        baud_rate_counter <= 0;
-                    end
-                end
-                default baud_rate_counter <= 0;
-            endcase
-        end
-    end
+    // Instantiate a pulse generator for the baud rate clock
+    pulse_generator #(
+        .ClkInFreq(ClkFreq),
+        .PulseOutFreq(BaudRate),
+        .HalfPeriodOffset(1)
+    ) baud_rate_pulse_gen (
+        .clk_in(clk),
+        .reset(reset),
+        .clear(baud_clear),
+        .pulse_out(baud_pulse_out)
+    );
 
     // UART Receiver Logic
     always_ff @(posedge clk or posedge reset) begin
         if (reset) begin
-            baud_state <= BAUD_DISABLED;
             uart_state <= UART_IDLE;
             uart_next_state <= UART_IDLE;
+            baud_clear <= 1;
             data_bit_counter <= 0;
             data_out <= 0;
             data_ready <= 0;
@@ -69,52 +52,42 @@ module uart_receiver #(
             uart_state <= uart_next_state;
             case (uart_state)
                 UART_IDLE: begin
+                    baud_clear <= 1;
                     if (rx == 0) begin  // Start bit detected (rx pulled low)
                         data_ready <= 0;
-                        baud_state <= BAUD_ENABLED;
                         uart_next_state <= UART_START;
-                    end else begin
-                        baud_state <= BAUD_DISABLED;
-                        uart_next_state <= UART_IDLE;
                     end
                 end
                 UART_START: begin
-                    if (baud_rate_counter == (BaudRateCounterMax / 2)) begin
+                    baud_clear <= 0;
+                    if (baud_pulse_out) begin
                         if (rx == 0) begin
                             data_bit_counter <= 0;
                             uart_next_state  <= UART_DATA;
                         end else begin
                             uart_next_state <= UART_IDLE;
                         end
-                    end else begin
-                        uart_next_state <= UART_START;
                     end
                 end
                 UART_DATA: begin
-                    if (baud_rate_counter == BaudRateCounterMax) begin
+                    if (baud_pulse_out) begin
                         data_out[data_bit_counter] <= rx;
                         if (data_bit_counter == 7) begin
                             uart_next_state <= UART_STOP;
                         end else begin
                             data_bit_counter <= data_bit_counter + 1;
                         end
-                    end else begin
-                        uart_next_state <= UART_DATA;
                     end
                 end
                 UART_STOP: begin
-                    if (baud_rate_counter == BaudRateCounterMax) begin
+                    if (baud_pulse_out) begin
                         if (rx == 1) begin  // Stop bit detected (rx pulled high)
                             data_ready <= 1;
-                            uart_next_state <= UART_IDLE;
-                        end else begin
-                            uart_next_state <= UART_IDLE;
                         end
-                    end else begin
-                        uart_next_state <= UART_STOP;
+                        uart_next_state <= UART_IDLE;
                     end
                 end
-                default: uart_state <= UART_IDLE;
+                default: uart_next_state <= UART_IDLE;
             endcase
         end
     end
