@@ -5,10 +5,8 @@ module uart_receiver #(
     input logic clk,
     input logic reset,
     input logic rx,
-    output logic [7:0] data_out,
     output logic data_ready,
-    output logic debug_baud_pulse_out,  // TODO: Remove debug output
-    output logic [1:0] debug_uart_state  // TODO: Remove debug output
+    output logic [7:0] data_out
 );
     /* States */
     typedef enum logic [1:0] {
@@ -24,9 +22,6 @@ module uart_receiver #(
     logic baud_pulse_out;
     logic [2:0] data_bit_counter;
 
-    assign debug_baud_pulse_out = baud_pulse_out;
-    assign debug_uart_state = uart_state;
-
     // Instantiate a pulse generator for the baud rate clock
     pulse_generator #(
         .ClkInFreq(ClkFreq),
@@ -39,28 +34,38 @@ module uart_receiver #(
         .pulse_out(baud_pulse_out)
     );
 
-    // UART Receiver Logic
+    // State Machine Transitions
     always_ff @(posedge clk or posedge reset) begin
         if (reset) begin
             uart_state <= UART_IDLE;
+        end else begin
+            uart_state <= uart_next_state;
+        end
+    end
+
+    // UART Receiver Logic
+    always_ff @(posedge clk or posedge reset) begin
+        if (reset) begin
             uart_next_state <= UART_IDLE;
             baud_clear <= 1;
             data_bit_counter <= 0;
-            data_out <= 0;
             data_ready <= 0;
+            data_out <= 0;
         end else begin
-            uart_state <= uart_next_state;
             case (uart_state)
                 UART_IDLE: begin
                     baud_clear <= 1;
                     data_bit_counter <= 0;
                     data_ready <= 0;
-                    if (rx == 0) begin  // Start bit detected (rx pulled low)
+
+                    // Start bit detected (rx pulled low)
+                    if (rx == 0) begin
                         uart_next_state <= UART_START;
                     end
                 end
                 UART_START: begin
                     baud_clear <= 0;
+
                     if (baud_pulse_out) begin
                         if (rx == 0) begin
                             uart_next_state <= UART_DATA;
@@ -72,16 +77,18 @@ module uart_receiver #(
                 UART_DATA: begin
                     if (baud_pulse_out) begin
                         data_out[data_bit_counter] <= rx;
-                        if (data_bit_counter == 7) begin
-                            uart_next_state <= UART_STOP;
-                        end else begin
+
+                        if (data_bit_counter < 7) begin
                             data_bit_counter <= data_bit_counter + 1;
+                        end else begin
+                            uart_next_state <= UART_STOP;
                         end
                     end
                 end
                 UART_STOP: begin
                     if (baud_pulse_out) begin
-                        if (rx == 1) begin  // Stop bit detected (rx pulled high)
+                        // Stop bit detected (rx pulled high)
+                        if (rx == 1) begin
                             data_ready <= 1;
                         end
                         uart_next_state <= UART_IDLE;
