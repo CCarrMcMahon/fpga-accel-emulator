@@ -7,7 +7,8 @@ module uart_receiver #(
     input logic rx,
     output logic [7:0] data_out,
     output logic data_ready,
-    input logic data_read
+    input logic data_read,
+    output logic data_error
 );
     // States
     typedef enum logic [1:0] {
@@ -45,17 +46,19 @@ module uart_receiver #(
         end
     end
 
+    // State Machine Logic
     always_comb begin
         next_state = state;
         case (state)
             IDLE: begin
-                // Start bit detected (rx pulled low)
-                if (rx == 0) begin
+                // Start bit detected and any previous data has been read
+                if (rx == 0 && !data_ready) begin
                     next_state = START;
                 end
             end
             START: begin
                 if (baud_pulse_out) begin
+                    // Check for a valid start bit at the given baud rate
                     if (rx == 0) begin
                         next_state = DATA;
                     end else begin
@@ -64,11 +67,13 @@ module uart_receiver #(
                 end
             end
             DATA: begin
+                // Move on once all data bits have been read
                 if (baud_pulse_out && bit_counter == 8) begin
                     next_state = STOP;
                 end
             end
             STOP: begin
+                // Always go back to IDLE state
                 if (baud_pulse_out) begin
                     next_state = IDLE;
                 end
@@ -84,45 +89,50 @@ module uart_receiver #(
             bit_counter <= 0;
             shift_reg <= 0;
             data_out <= 0;
+            data_ready <= 0;
+            data_error <= 0;
         end else begin
             case (state)
-                IDLE: baud_clear <= 1;
+                IDLE: begin
+                    baud_clear <= 1;
+                    if (rx == 0 && data_ready) begin
+                        // Start bit detected but previous data hasn't been read
+                        data_error <= 1;
+                    end
+                end
                 START: begin
+                    // Start the baud timer and reset counted data bits
                     baud_clear  <= 0;
                     bit_counter <= 0;
                 end
                 DATA: begin
+                    // Shift all data bits into shift register
                     if (baud_pulse_out && bit_counter < 8) begin
                         shift_reg   <= {rx, shift_reg[7:1]};
                         bit_counter <= bit_counter + 1;
                     end
                 end
                 STOP: begin
-                    // Stop bit detected (rx pulled high)
-                    if (baud_pulse_out && rx == 1) begin
-                        data_out <= shift_reg;
+                    if (baud_pulse_out) begin
+                        if (rx == 1) begin
+                            // Stop bit detected
+                            data_out   <= shift_reg;
+                            data_ready <= 1;
+                        end else begin
+                            // Invalid stop bit
+                            data_error <= 1;
+                        end
                     end
                 end
-                default: baud_clear <= 1;
+                default: data_error <= 1;
             endcase
         end
-    end
 
-    // Clear data_ready after it is read
-    always_ff @(posedge clk or negedge resetn) begin
-        if (!resetn) begin
+        // Clear data if it has been read
+        if (data_read) begin
+            data_out   <= 0;
             data_ready <= 0;
-        end else if (data_read) begin
-            data_ready <= 0;
-        end else begin
-            case (state)
-                STOP: begin
-                    if (baud_pulse_out && rx == 1) begin
-                        data_ready <= 1;
-                    end
-                end
-                default: data_ready <= data_ready;
-            endcase
+            data_error <= 0;
         end
     end
 endmodule
