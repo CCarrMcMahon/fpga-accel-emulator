@@ -31,7 +31,7 @@ module uart_receiver #(
     pulse_generator #(
         .ClkInFreq(ClkFreq),
         .PulseOutFreq(BaudRate),
-        .HalfPeriodOffset(1)
+        .PhaseShift(0.5)
     ) baud_rate_pulse_gen (
         .clk_in(clk),
         .reset(reset),
@@ -53,8 +53,9 @@ module uart_receiver #(
             case (uart_state)
                 UART_IDLE: begin
                     baud_clear <= 1;
+                    data_bit_counter <= 0;
+                    data_ready <= 0;
                     if (rx == 0) begin  // Start bit detected (rx pulled low)
-                        data_ready <= 0;
                         uart_next_state <= UART_START;
                     end
                 end
@@ -62,8 +63,7 @@ module uart_receiver #(
                     baud_clear <= 0;
                     if (baud_pulse_out) begin
                         if (rx == 0) begin
-                            data_bit_counter <= 0;
-                            uart_next_state  <= UART_DATA;
+                            uart_next_state <= UART_DATA;
                         end else begin
                             uart_next_state <= UART_IDLE;
                         end
