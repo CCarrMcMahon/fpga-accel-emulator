@@ -1,6 +1,31 @@
+/**
+ * Receives UART data and outputs the received byte.
+ *
+ * This module implements a UART receiver that takes an input clock signal and
+ * a serial data input (rx) and outputs the received byte along with a data ready
+ * signal. The baud rate for the UART communication is defined by the `BaudRate`
+ * parameter.
+ *
+ * ## Parameters
+ * - `ClkFreq` (int): Input clock frequency in Hz (default: 100 MHz).
+ * - `BaudRate` (int): Baud rate for UART communication (default: 9600).
+ *
+ * ## Inputs
+ * - `clk` (logic): Input clock signal.
+ * - `reset` (logic): Reset signal to initialize the state machine and outputs.
+ * - `rx` (logic): Serial data input.
+ *
+ * ## Outputs
+ * - `data_ready` (logic): Indicates that a byte has been received and is ready to be read.
+ * - `data_out` (logic [7:0]): The received byte.
+ *
+ * The module uses a state machine to handle the UART protocol, including start,
+ * data, and stop bits. A pulse generator is instantiated to generate the baud
+ * rate clock.
+ */
 module uart_receiver #(
-    parameter int ClkFreq  = 100_000_000,  // Default clock frequency: 100 MHz
-    parameter int BaudRate = 9600          // Default baud rate: 9600
+    parameter int ClkFreq  = 100_000_000,
+    parameter int BaudRate = 9600
 ) (
     input logic clk,
     input logic reset,
