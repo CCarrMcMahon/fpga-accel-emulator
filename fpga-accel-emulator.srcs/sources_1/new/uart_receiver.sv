@@ -8,7 +8,8 @@ module uart_receiver #(
     output logic [7:0] data_out,
     output logic data_ready,
     input logic data_read,
-    output logic data_error
+    output logic data_error,
+    output logic debug_baud_pulse_out
 );
     // States
     typedef enum logic [1:0] {
@@ -22,7 +23,7 @@ module uart_receiver #(
     // Internal signals
     logic baud_clear;
     logic baud_pulse_out;
-    logic [3:0] bit_counter;
+    logic [2:0] bit_counter;
     logic [7:0] shift_reg;
 
     // Instantiate a pulse generator for the baud rate clock
@@ -68,7 +69,7 @@ module uart_receiver #(
             end
             DATA: begin
                 // Move on once all data bits have been read
-                if (baud_pulse_out && bit_counter == 8) begin
+                if (baud_pulse_out && bit_counter == 7) begin
                     next_state = STOP;
                 end
             end
@@ -111,9 +112,11 @@ module uart_receiver #(
                 end
                 DATA: begin
                     // Shift all data bits into shift register
-                    if (baud_pulse_out && bit_counter < 8) begin
-                        shift_reg   <= {rx, shift_reg[7:1]};
-                        bit_counter <= bit_counter + 1;
+                    if (baud_pulse_out) begin
+                        shift_reg <= {rx, shift_reg[7:1]};
+                        if (bit_counter < 7) begin
+                            bit_counter <= bit_counter + 1;
+                        end
                     end
                 end
                 STOP: begin
@@ -132,4 +135,7 @@ module uart_receiver #(
             endcase
         end
     end
+
+    // Final Assignments
+    assign debug_baud_pulse_out = baud_pulse_out;
 endmodule
