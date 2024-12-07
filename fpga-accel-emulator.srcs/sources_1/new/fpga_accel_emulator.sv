@@ -40,7 +40,7 @@ module fpga_accel_emulator (
         .data_out(data_out),
         .data_ready(data_ready),
         .data_read(btnc),
-        .data_error(data_error),
+        .data_error(data_error)
     );
 
     // Final Assignments
