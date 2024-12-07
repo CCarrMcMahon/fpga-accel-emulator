@@ -23,13 +23,14 @@ module fpga_accel_emulator (
     input logic cpu_resetn,
     input logic uart_txd_in,
     input logic btnc,
-    output logic [1:0] ja,
+    output logic [3:0] ja,
     output logic [7:0] led
 );
     // Internal Signals
     logic [7:0] data_out;
     logic data_ready;
     logic data_error;
+    logic debug_baud_pulse_out;
 
     // Instantiate the uart_receiver module
     uart_receiver #(
@@ -42,10 +43,11 @@ module fpga_accel_emulator (
         .data_out(data_out),
         .data_ready(data_ready),
         .data_read(btnc),
-        .data_error(data_error)
+        .data_error(data_error),
+        .debug_baud_pulse_out(debug_baud_pulse_out)
     );
 
     // Final Assignments
-    assign ja  = {data_error, data_ready};
+    assign ja  = {data_error, data_ready, debug_baud_pulse_out, uart_txd_in};
     assign led = data_out;
 endmodule
