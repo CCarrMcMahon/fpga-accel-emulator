@@ -4,7 +4,8 @@ module fpga_accel_emulator (
     input logic cpu_resetn,
     input logic uart_txd_in,
     output logic [8:0] led,
-    output logic [4:1] ja
+    output logic [3:0] ja,
+    output logic [7:0] jb
 );
     logic [7:0] data_out;
     logic data_ready;
@@ -26,7 +27,8 @@ module fpga_accel_emulator (
         .debug_uart_state(debug_uart_state)
     );
 
-    assign ja[4:1] = {debug_uart_state, debug_baud_pulse_out, uart_txd_in};
+    assign ja = {debug_uart_state, debug_baud_pulse_out, uart_txd_in};
+    assign jb = data_out;
 
     always_ff @(posedge clk100mhz or negedge cpu_resetn) begin
         if (!cpu_resetn) begin

@@ -1,7 +1,7 @@
 Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2024 Advanced Micro Devices, Inc. All Rights Reserved.
 ---------------------------------------------------------------------------------------------------------------------------------------------
 | Tool Version : Vivado v.2024.2 (win64) Build 5239630 Fri Nov 08 22:35:27 MST 2024
-| Date         : Fri Dec  6 18:28:00 2024
+| Date         : Fri Dec  6 21:39:08 2024
 | Host         : CHRIS-DESKTOP running 64-bit major release  (build 9200)
 | Command      : report_utilization -file fpga_accel_emulator_utilization_synth.rpt -pb fpga_accel_emulator_utilization_synth.pb
 | Design       : fpga_accel_emulator
@@ -93,7 +93,7 @@ Warning! For any ECO changes, please run place_design if there are unplaced inst
 +-----------------------------+------+-------+------------+-----------+-------+
 |          Site Type          | Used | Fixed | Prohibited | Available | Util% |
 +-----------------------------+------+-------+------------+-----------+-------+
-| Bonded IOB                  |   16 |     0 |          0 |       210 |  7.62 |
+| Bonded IOB                  |   24 |     0 |          0 |       210 | 11.43 |
 | Bonded IPADs                |    0 |     0 |          0 |         2 |  0.00 |
 | PHY_CONTROL                 |    0 |     0 |          0 |         6 |  0.00 |
 | PHASER_REF                  |    0 |     0 |          0 |         6 |  0.00 |
@@ -150,8 +150,8 @@ Warning! For any ECO changes, please run place_design if there are unplaced inst
 | Ref Name | Used | Functional Category |
 +----------+------+---------------------+
 | FDCE     |   35 |        Flop & Latch |
+| OBUF     |   21 |                  IO |
 | LUT5     |   15 |                 LUT |
-| OBUF     |   13 |                  IO |
 | LUT6     |   12 |                 LUT |
 | FDPE     |    6 |        Flop & Latch |
 | LUT4     |    5 |                 LUT |
