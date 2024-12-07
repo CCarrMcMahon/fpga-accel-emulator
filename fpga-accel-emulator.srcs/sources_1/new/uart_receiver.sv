@@ -12,11 +12,11 @@
  *
  * ## Inputs
  * - `clk` (logic): Input clock signal.
- * - `reset` (logic): Reset signal to initialize the state machine and outputs.
+ * - `rst_n` (logic): Active-low reset signal to initialize the state machine and outputs.
  * - `rx` (logic): Serial data input.
  *
  * ## Outputs
- * - `data_ready` (logic): Indicates that a byte has been received and is ready to be read.
+ * - `valid` (logic): Indicates that a byte has been received and is ready to be read.
  * - `data_out` (logic [7:0]): The received byte.
  *
  * The module uses a state machine to handle the UART protocol, including start,
@@ -28,9 +28,9 @@ module uart_receiver #(
     parameter int BaudRate = 9600
 ) (
     input logic clk,
-    input logic reset,
+    input logic rst_n,
     input logic rx,
-    output logic data_ready,
+    output logic valid,
     output logic [7:0] data_out
 );
     /* States */
@@ -54,14 +54,14 @@ module uart_receiver #(
         .PhaseShift(0.5)
     ) baud_rate_pulse_gen (
         .clk_in(clk),
-        .reset(reset),
+        .rst_n(rst_n),
         .clear(baud_clear),
         .pulse_out(baud_pulse_out)
     );
 
     // State Machine Transitions
-    always_ff @(posedge clk or posedge reset) begin
-        if (reset) begin
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
             uart_state <= UART_IDLE;
         end else begin
             uart_state <= uart_next_state;
@@ -69,19 +69,19 @@ module uart_receiver #(
     end
 
     // UART Receiver Logic
-    always_ff @(posedge clk or posedge reset) begin
-        if (reset) begin
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
             uart_next_state <= UART_IDLE;
             baud_clear <= 1;
             data_bit_counter <= 0;
-            data_ready <= 0;
+            valid <= 0;
             data_out <= 0;
         end else begin
             case (uart_state)
                 UART_IDLE: begin
                     baud_clear <= 1;
                     data_bit_counter <= 0;
-                    data_ready <= 0;
+                    valid <= 0;
 
                     // Start bit detected (rx pulled low)
                     if (rx == 0) begin
@@ -114,7 +114,7 @@ module uart_receiver #(
                     if (baud_pulse_out) begin
                         // Stop bit detected (rx pulled high)
                         if (rx == 1) begin
-                            data_ready <= 1;
+                            valid <= 1;
                         end
                         uart_next_state <= UART_IDLE;
                     end

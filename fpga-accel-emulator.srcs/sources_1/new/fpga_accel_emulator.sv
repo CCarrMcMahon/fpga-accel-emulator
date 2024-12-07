@@ -26,9 +26,9 @@ module fpga_accel_emulator (
     output logic [7:0] led
 );
     /* Signals */
-    logic data_ready;
+    logic valid;
     logic [7:0] data_out;
-    assign ja  = data_ready;
+    assign ja  = valid;
     assign led = data_out;
 
     // Instantiate the uart_receiver module
@@ -37,9 +37,9 @@ module fpga_accel_emulator (
         .BaudRate(9600)
     ) uart_receiver_inst (
         .clk(clk100mhz),
-        .reset(~cpu_resetn),
+        .rst_n(cpu_resetn),
         .rx(uart_txd_in),
-        .data_ready(data_ready),
+        .valid(valid),
         .data_out(data_out)
     );
 endmodule
