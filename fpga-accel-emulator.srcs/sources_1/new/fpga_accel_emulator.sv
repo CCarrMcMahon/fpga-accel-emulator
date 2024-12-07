@@ -37,7 +37,7 @@ module fpga_accel_emulator (
         .BaudRate(9600)
     ) uart_receiver_inst (
         .clk(clk100mhz),
-        .rst_n(cpu_resetn),
+        .resetn(cpu_resetn),
         .rx(uart_txd_in),
         .valid(valid),
         .data_out(data_out)

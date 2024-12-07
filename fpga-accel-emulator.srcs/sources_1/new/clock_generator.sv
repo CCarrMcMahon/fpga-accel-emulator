@@ -12,7 +12,7 @@
  *
  * ## Inputs
  * - `clk_in` (logic): Input clock signal.
- * - `rst_n` (logic): Active-low reset signal to initialize the counter and output clock.
+ * - `resetn` (logic): Active-low reset signal to initialize the counter and output clock.
  * - `clear` (logic): Clear signal to reset the counter and output clock.
  *
  * ## Outputs
@@ -28,7 +28,7 @@ module clock_generator #(
     parameter real PhaseShift = 0.0
 ) (
     input  logic clk_in,
-    input  logic rst_n,
+    input  logic resetn,
     input  logic clear,
     output logic clk_out
 );
@@ -39,8 +39,8 @@ module clock_generator #(
 
     logic [CounterBits-1:0] counter;
 
-    always_ff @(posedge clk_in or negedge rst_n) begin
-        if (!rst_n) begin
+    always_ff @(posedge clk_in or negedge resetn) begin
+        if (!resetn) begin
             counter <= ShiftOffset;
             clk_out <= 0;
         end else if (clear) begin

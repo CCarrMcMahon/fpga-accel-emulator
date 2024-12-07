@@ -12,7 +12,7 @@
  *
  * ## Inputs
  * - `clk` (logic): Input clock signal.
- * - `rst_n` (logic): Active-low reset signal to initialize the state machine and outputs.
+ * - `resetn` (logic): Active-low reset signal to initialize the state machine and outputs.
  * - `rx` (logic): Serial data input.
  *
  * ## Outputs
@@ -28,7 +28,7 @@ module uart_receiver #(
     parameter int BaudRate = 9600
 ) (
     input logic clk,
-    input logic rst_n,
+    input logic resetn,
     input logic rx,
     output logic valid,
     output logic [7:0] data_out
@@ -54,14 +54,14 @@ module uart_receiver #(
         .PhaseShift(0.5)
     ) baud_rate_pulse_gen (
         .clk_in(clk),
-        .rst_n(rst_n),
+        .resetn(resetn),
         .clear(baud_clear),
         .pulse_out(baud_pulse_out)
     );
 
     // State Machine Transitions
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
+    always_ff @(posedge clk or negedge resetn) begin
+        if (!resetn) begin
             uart_state <= UART_IDLE;
         end else begin
             uart_state <= uart_next_state;
@@ -69,8 +69,8 @@ module uart_receiver #(
     end
 
     // UART Receiver Logic
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
+    always_ff @(posedge clk or negedge resetn) begin
+        if (!resetn) begin
             uart_next_state <= UART_IDLE;
             baud_clear <= 1;
             data_bit_counter <= 0;
