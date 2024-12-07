@@ -1,3 +1,27 @@
+/**
+ * UART Receiver Module
+ *
+ * This module implements a UART receiver that reads serial data from the `rx` input, processes it according to the
+ * specified baud rate, and outputs the received data on `data_out` when `data_ready` is asserted. It then waits to read
+ * more data until `data_read` has been acked. If more data is received before then, the `data_error` signal will be
+ * asserted and the incoming bytes will be ignored. The `data_error` signal will also be set when an invalid start or
+ * stop bit is detected.
+ *
+ * Parameters:
+ *     ClkFreq (int): The frequency of the input clock in Hz (default: 100,000,000).
+ *     BaudRate (int): The desired baud rate for UART communication (default: 9600).
+ *
+ * Inputs:
+ *     clk (logic): The input clock signal.
+ *     resetn (logic): Active-low reset signal.
+ *     rx (logic): The UART receive data input.
+ *     data_read (logic): Acknowledges that data_out has been read.
+ *
+ * Outputs:
+ *     data_out (logic [7:0]): The 8-bit data output.
+ *     data_ready (logic): Indicates that valid data is available on data_out.
+ *     data_error (logic): Indicates an error in data reception.
+ */
 module uart_receiver #(
     parameter int ClkFreq  = 100_000_000,
     parameter int BaudRate = 9600
@@ -8,8 +32,7 @@ module uart_receiver #(
     output logic [7:0] data_out,
     output logic data_ready,
     input logic data_read,
-    output logic data_error,
-    output logic debug_baud_pulse_out
+    output logic data_error
 );
     // States
     typedef enum logic [1:0] {
@@ -135,7 +158,4 @@ module uart_receiver #(
             endcase
         end
     end
-
-    // Final Assignments
-    assign debug_baud_pulse_out = baud_pulse_out;
 endmodule
