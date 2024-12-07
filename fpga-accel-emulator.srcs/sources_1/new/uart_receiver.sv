@@ -91,6 +91,10 @@ module uart_receiver #(
             data_out <= 0;
             data_ready <= 0;
             data_error <= 0;
+        end else if (data_read) begin
+            data_out   <= 0;
+            data_ready <= 0;
+            data_error <= 0;
         end else begin
             case (state)
                 IDLE: begin
@@ -126,13 +130,6 @@ module uart_receiver #(
                 end
                 default: data_error <= 1;
             endcase
-        end
-
-        // Clear data if it has been read
-        if (data_read) begin
-            data_out   <= 0;
-            data_ready <= 0;
-            data_error <= 0;
         end
     end
 endmodule
