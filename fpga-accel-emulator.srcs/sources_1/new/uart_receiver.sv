@@ -33,7 +33,7 @@ module uart_receiver #(
     output logic valid,
     output logic [7:0] data_out
 );
-    /* States */
+    // States
     typedef enum logic [1:0] {
         UART_IDLE,
         UART_START,
@@ -42,10 +42,10 @@ module uart_receiver #(
     } uart_state_t;
     uart_state_t uart_state, uart_next_state;
 
-    /* Signals */
+    // Internal signals
     logic baud_clear;
     logic baud_pulse_out;
-    logic [2:0] data_bit_counter;
+    logic [2:0] bit_counter;
 
     // Instantiate a pulse generator for the baud rate clock
     pulse_generator #(
@@ -73,14 +73,14 @@ module uart_receiver #(
         if (!resetn) begin
             uart_next_state <= UART_IDLE;
             baud_clear <= 1;
-            data_bit_counter <= 0;
+            bit_counter <= 0;
             valid <= 0;
             data_out <= 0;
         end else begin
             case (uart_state)
                 UART_IDLE: begin
                     baud_clear <= 1;
-                    data_bit_counter <= 0;
+                    bit_counter <= 0;
                     valid <= 0;
 
                     // Start bit detected (rx pulled low)
@@ -101,10 +101,10 @@ module uart_receiver #(
                 end
                 UART_DATA: begin
                     if (baud_pulse_out) begin
-                        data_out[data_bit_counter] <= rx;
+                        data_out[bit_counter] <= rx;
 
-                        if (data_bit_counter < 7) begin
-                            data_bit_counter <= data_bit_counter + 1;
+                        if (bit_counter < 7) begin
+                            bit_counter <= bit_counter + 1;
                         end else begin
                             uart_next_state <= UART_STOP;
                         end

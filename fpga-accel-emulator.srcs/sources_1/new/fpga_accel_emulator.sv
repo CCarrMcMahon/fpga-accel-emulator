@@ -25,11 +25,9 @@ module fpga_accel_emulator (
     output logic [0:0] ja,
     output logic [7:0] led
 );
-    /* Signals */
+    // Internal Signals
     logic valid;
     logic [7:0] data_out;
-    assign ja  = valid;
-    assign led = data_out;
 
     // Instantiate the uart_receiver module
     uart_receiver #(
@@ -42,4 +40,8 @@ module fpga_accel_emulator (
         .valid(valid),
         .data_out(data_out)
     );
+
+    // Final Assignments
+    assign ja  = valid;
+    assign led = data_out;
 endmodule
