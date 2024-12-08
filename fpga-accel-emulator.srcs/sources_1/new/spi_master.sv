@@ -55,7 +55,7 @@ module spi_master #(
     always_ff @(posedge clk or negedge resetn) begin
         if (!resetn) begin
             current_state <= IDLE;
-        end else begin
+        end else if (data_read != 1) begin  // Don't update state while data_read is being held high
             current_state <= next_state;
         end
     end
@@ -98,11 +98,13 @@ module spi_master #(
             data_ready <= 0;
             ack_data_read <= 0;
             data_error <= 0;
-        end else if (data_read) begin
-            data_out   <= 0;
-            data_ready <= 0;
-            data_error <= 0;
         end else begin
+            if (data_read) begin
+                data_out   <= 0;
+                data_ready <= 0;
+                data_error <= 0;
+            end
+
             case (current_state)
                 IDLE: begin
                     // Keep the clock and chip disabled while idle
