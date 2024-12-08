@@ -39,6 +39,7 @@ module spi_master #(
     logic [3:0] bit_counter;
     logic [7:0] shift_reg;
     logic prev_sclk;
+    logic sync_start_tx;
     logic sync_data_read;
 
     // Instantiate a clock generator for the SPI clock
@@ -52,7 +53,15 @@ module spi_master #(
         .clk_out(sclk)
     );
 
-    // Instantiate the synchronizer for data_read
+    // Instantiate a synchronizer for start_tx
+    synchronizer sync_data_read_inst (
+        .clk(clk),
+        .resetn(resetn),
+        .async_signal(start_tx),
+        .sync_signal(sync_start_tx)
+    );
+
+    // Instantiate a synchronizer for data_read
     synchronizer sync_data_read_inst (
         .clk(clk),
         .resetn(resetn),
@@ -74,7 +83,7 @@ module spi_master #(
         next_state = current_state;
         case (current_state)
             IDLE: begin
-                if (start_tx && !data_ready) begin
+                if (sync_start_tx && !data_ready) begin
                     next_state = START;
                 end
             end
@@ -121,7 +130,7 @@ module spi_master #(
                     prev_sclk <= 1;
                     mosi <= 0;
                     csn <= 1;
-                    if (start_tx && data_ready) begin
+                    if (sync_start_tx && data_ready) begin
                         // New data detected but previous data hasn't been acked
                         data_error <= 1;
                     end
