@@ -57,6 +57,7 @@ module uart_receiver #(
     logic baud_pulse_out;
     logic [3:0] bit_counter;
     logic [7:0] shift_reg;
+    logic sync_rx;
     logic sync_data_read;
 
     // Instantiate a pulse generator for the baud rate clock
@@ -71,7 +72,15 @@ module uart_receiver #(
         .pulse_out(baud_pulse_out)
     );
 
-    // Instantiate the synchronizer for data_read
+    // Instantiate a synchronizer for rx
+    synchronizer sync_rx_inst (
+        .clk(clk),
+        .resetn(resetn),
+        .async_signal(rx),
+        .sync_signal(sync_rx)
+    );
+
+    // Instantiate a synchronizer for data_read
     synchronizer sync_data_read_inst (
         .clk(clk),
         .resetn(resetn),
@@ -94,14 +103,14 @@ module uart_receiver #(
         case (current_state)
             IDLE: begin
                 // Start bit detected and any previous data has been read
-                if (rx == 0 && !data_ready) begin
+                if (sync_rx == 0 && !data_ready) begin
                     next_state = START;
                 end
             end
             START: begin
                 if (baud_pulse_out) begin
                     // Check for a valid start bit at the given baud rate
-                    if (rx == 0) begin
+                    if (sync_rx == 0) begin
                         next_state = DATA;
                     end else begin
                         next_state = IDLE;
@@ -132,6 +141,7 @@ module uart_receiver #(
             data_ready <= 0;
             data_error <= 0;
         end else begin
+            // Clear data after being acked
             if (sync_data_read) begin
                 data_out   <= 0;
                 data_ready <= 0;
@@ -141,7 +151,7 @@ module uart_receiver #(
             case (current_state)
                 IDLE: begin
                     baud_clear <= 1;
-                    if (rx == 0 && data_ready) begin
+                    if (sync_rx == 0 && data_ready) begin
                         // Start bit detected but previous data hasn't been read
                         data_error <= 1;
                     end
@@ -154,12 +164,12 @@ module uart_receiver #(
                 DATA: begin
                     // Shift all data bits into shift register
                     if (baud_pulse_out && bit_counter < 8) begin
-                        shift_reg   <= {rx, shift_reg[7:1]};
+                        shift_reg   <= {sync_rx, shift_reg[7:1]};
                         bit_counter <= bit_counter + 1;
                     end
                 end
                 STOP: begin
-                    if (rx == 1) begin
+                    if (sync_rx == 1) begin
                         // Stop bit detected
                         data_out   <= shift_reg;
                         data_ready <= 1;
