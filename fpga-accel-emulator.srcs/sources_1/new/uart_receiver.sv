@@ -3,8 +3,8 @@
  *
  * This module implements a UART receiver that reads serial data from the `rx` input, processes it according to the
  * specified baud rate, and outputs the received data on `data_out` when `data_ready` is asserted. It then waits to read
- * more data until `data_read` has been acked. If more data is received before then, the `data_error` signal will be
- * asserted and the incoming bytes will be ignored. The `data_error` signal will also be set when an invalid start or
+ * more data until `data_read` has been acknowledged. If more data is received before then, the `data_error` signal will
+ * be asserted and the incoming bytes will be ignored. The `data_error` signal will also be set when an invalid start or
  * stop bit is detected.
  *
  * Parameters:
