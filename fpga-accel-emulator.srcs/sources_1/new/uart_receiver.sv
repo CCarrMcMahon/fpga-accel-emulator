@@ -1,37 +1,59 @@
 /**
- * UART Receiver Module
+ * @module uart_receiver
+ * @param ClkFreq  Clock frequency in Hz (default: 100,000,000)
+ * @param BaudRate Baud rate for UART communication (default: 9600)
  *
- * This module implements a UART receiver that reads serial data from the `rx` input, processes it according to the
- * specified baud rate, and outputs the received data on `data_out` when `data_ready` is asserted. It then waits to read
- * more data until `data_read` has been acked. If more data is received before then, the `data_error` signal will be
- * asserted and the incoming bytes will be ignored. The `data_error` signal will also be set when an invalid start or
- * stop bit is detected.
+ * @input clk       System clock signal
+ * @input resetn    Active-low reset signal
+ * @input data_read Signal indicating data has been read
+ * @input rx        UART receive signal
  *
- * Parameters:
- *     ClkFreq (int): The frequency of the input clock in Hz (default: 100,000,000).
- *     BaudRate (int): The desired baud rate for UART communication (default: 9600).
+ * @output data_out   8-bit data output
+ * @output data_ready Signal indicating data is ready to be read
+ * @output data_error Signal indicating an error in data reception
  *
- * Inputs:
- *     clk (logic): The input clock signal.
- *     resetn (logic): Active-low reset signal.
- *     rx (logic): The UART receive data input.
- *     data_read (logic): Acknowledges that data_out has been read.
+ * This module implements a UART receiver with the following features:
+ * - Synchronizes the `rx` and `data_read` signals to the system clock
+ * - Uses a state machine to manage the reception process
+ * - Detects start, data, and stop bits according to the specified baud rate
+ * - Outputs received data and status signals
  *
- * Outputs:
- *     data_out (logic [7:0]): The 8-bit data output.
- *     data_ready (logic): Indicates that valid data is available on data_out.
- *     data_error (logic): Indicates an error in data reception.
+ * The state machine has four states:
+ * - IDLE: Waits for a start bit
+ * - START: Validates the start bit
+ * - DATA: Shifts in the data bits
+ * - STOP: Validates the stop bit and sets the output signals
+ *
+ * Internal signals include:
+ * - `baud_clear`: Clears the baud rate pulse generator
+ * - `baud_pulse_out`: Pulse output from the baud rate pulse generator
+ * - `bit_counter`: Counts the number of received data bits
+ * - `shift_reg`: Shift register for received data bits
+ * - `sync_rx`: Synchronized `rx` signal
+ * - `sync_data_read`: Synchronized `data_read` signal
+ *
+ * The module instantiates a pulse generator for the baud rate clock and synchronizers for the `rx` and `data_read`
+ * signals.
  */
 module uart_receiver #(
     parameter int ClkFreq  = 100_000_000,
     parameter int BaudRate = 9600
 ) (
+    // Clock and Reset
     input logic clk,
     input logic resetn,
-    input logic rx,
-    output logic [7:0] data_out,
-    output logic data_ready,
+
+    // Control Signals
     input logic data_read,
+
+    // UART Interface
+    input logic rx,
+
+    // Data Signals
+    output logic [7:0] data_out,
+
+    // Status Signals
+    output logic data_ready,
     output logic data_error
 );
     // States
@@ -41,13 +63,15 @@ module uart_receiver #(
         DATA,
         STOP
     } state_t;
-    state_t state, next_state;
+    state_t current_state, next_state;
 
     // Internal signals
     logic baud_clear;
     logic baud_pulse_out;
-    logic [2:0] bit_counter;
+    logic [3:0] bit_counter;
     logic [7:0] shift_reg;
+    logic sync_rx;
+    logic sync_data_read;
 
     // Instantiate a pulse generator for the baud rate clock
     pulse_generator #(
@@ -61,29 +85,45 @@ module uart_receiver #(
         .pulse_out(baud_pulse_out)
     );
 
+    // Instantiate a synchronizer for rx
+    synchronizer sync_rx_inst (
+        .clk(clk),
+        .resetn(resetn),
+        .async_signal(rx),
+        .sync_signal(sync_rx)
+    );
+
+    // Instantiate a synchronizer for data_read
+    synchronizer sync_data_read_inst (
+        .clk(clk),
+        .resetn(resetn),
+        .async_signal(data_read),
+        .sync_signal(sync_data_read)
+    );
+
     // State Machine Transitions
     always_ff @(posedge clk or negedge resetn) begin
         if (!resetn) begin
-            state <= IDLE;
-        end else begin
-            state <= next_state;
+            current_state <= IDLE;
+        end else if (!sync_data_read) begin  // Only update state when not being acked
+            current_state <= next_state;
         end
     end
 
     // State Machine Logic
     always_comb begin
-        next_state = state;
-        case (state)
+        next_state = current_state;
+        case (current_state)
             IDLE: begin
                 // Start bit detected and any previous data has been read
-                if (rx == 0 && !data_ready) begin
+                if (sync_rx == 0 && !data_ready) begin
                     next_state = START;
                 end
             end
             START: begin
                 if (baud_pulse_out) begin
                     // Check for a valid start bit at the given baud rate
-                    if (rx == 0) begin
+                    if (sync_rx == 0) begin
                         next_state = DATA;
                     end else begin
                         next_state = IDLE;
@@ -92,15 +132,13 @@ module uart_receiver #(
             end
             DATA: begin
                 // Move on once all data bits have been read
-                if (baud_pulse_out && bit_counter == 7) begin
+                if (baud_pulse_out && bit_counter == 8) begin
                     next_state = STOP;
                 end
             end
             STOP: begin
                 // Always go back to IDLE state
-                if (baud_pulse_out) begin
-                    next_state = IDLE;
-                end
+                next_state = IDLE;
             end
             default: next_state = IDLE;
         endcase
@@ -115,15 +153,18 @@ module uart_receiver #(
             data_out <= 0;
             data_ready <= 0;
             data_error <= 0;
-        end else if (data_read) begin
-            data_out   <= 0;
-            data_ready <= 0;
-            data_error <= 0;
         end else begin
-            case (state)
+            // Clear data after being acked
+            if (sync_data_read) begin
+                data_out   <= 0;
+                data_ready <= 0;
+                data_error <= 0;
+            end
+
+            case (current_state)
                 IDLE: begin
                     baud_clear <= 1;
-                    if (rx == 0 && data_ready) begin
+                    if (sync_rx == 0 && data_ready) begin
                         // Start bit detected but previous data hasn't been read
                         data_error <= 1;
                     end
@@ -135,23 +176,19 @@ module uart_receiver #(
                 end
                 DATA: begin
                     // Shift all data bits into shift register
-                    if (baud_pulse_out) begin
-                        shift_reg <= {rx, shift_reg[7:1]};
-                        if (bit_counter < 7) begin
-                            bit_counter <= bit_counter + 1;
-                        end
+                    if (baud_pulse_out && bit_counter < 8) begin
+                        shift_reg   <= {sync_rx, shift_reg[7:1]};
+                        bit_counter <= bit_counter + 1;
                     end
                 end
                 STOP: begin
-                    if (baud_pulse_out) begin
-                        if (rx == 1) begin
-                            // Stop bit detected
-                            data_out   <= shift_reg;
-                            data_ready <= 1;
-                        end else begin
-                            // Invalid stop bit
-                            data_error <= 1;
-                        end
+                    if (sync_rx == 1) begin
+                        // Stop bit detected
+                        data_out   <= shift_reg;
+                        data_ready <= 1;
+                    end else begin
+                        // Invalid stop bit
+                        data_error <= 1;
                     end
                 end
                 default: data_error <= 1;
