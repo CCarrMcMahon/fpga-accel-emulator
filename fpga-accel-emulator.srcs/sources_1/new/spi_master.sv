@@ -1,3 +1,47 @@
+/**
+ * @module spi_master
+ * @param ClkFreq  Clock frequency in Hz (default: 100,000,000)
+ * @param SclkFreq SPI serial clock frequency in Hz (default: 1,000,000)
+ *
+ * @input clk       System clock signal
+ * @input resetn    Active-low reset signal
+ * @input start_tx  Signal to start SPI transmission
+ * @input data_read Signal indicating data has been read
+ * @input miso      Master In Slave Out signal
+ * @input [7:0] data_in  8-bit data input
+ *
+ * @output mosi         Master Out Slave In signal
+ * @output sclk         SPI serial clock signal
+ * @output csn          Chip select signal (active low)
+ * @output [7:0] data_out  8-bit data output
+ * @output data_ready   Signal indicating data is ready to be read
+ * @output ack_data_read Signal acknowledging data read
+ * @output data_error   Signal indicating an error in data transmission
+ *
+ * This module implements a SPI master with the following features:
+ * - Synchronizes the `data_read` and `start_tx` signals to the system clock
+ * - Uses a state machine to manage the SPI transmission process
+ * - Generates the SPI clock signal according to the specified frequency
+ * - Handles the SPI protocol including chip select, data shifting, and clocking
+ * - Outputs received data and status signals
+ *
+ * The state machine has four states:
+ * - IDLE: Waits for a start transmission signal
+ * - START: Prepares for data transmission
+ * - DATA: Shifts data bits in and out
+ * - STOP: Finalizes the transmission and sets the output signals
+ *
+ * Internal signals include:
+ * - `sclk_clear`: Clears the SPI clock generator
+ * - `bit_counter`: Counts the number of transmitted/received data bits
+ * - `shift_reg`: Shift register for data bits
+ * - `prev_sclk`: Previous state of the SPI clock signal
+ * - `sync_data_read`: Synchronized `data_read` signal
+ * - `sync_start_tx`: Synchronized `start_tx` signal
+ *
+ * The module instantiates a clock generator for the SPI clock and synchronizers for the `data_read` and `start_tx`
+ * signals.
+ */
 module spi_master #(
     parameter int ClkFreq = 100_000_000,  // Input clock frequency in Hz
     parameter int SclkFreq = 1_000_000  // SPI serial clock frequency in Hz
