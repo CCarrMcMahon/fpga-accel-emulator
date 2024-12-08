@@ -39,6 +39,7 @@ module spi_master #(
     logic [3:0] bit_counter;
     logic [7:0] shift_reg;
     logic prev_sclk;
+    logic sync_data_read;
 
     // Instantiate a clock generator for the SPI clock
     clock_generator #(
@@ -51,11 +52,19 @@ module spi_master #(
         .clk_out(sclk)
     );
 
+    // Instantiate the synchronizer for data_read
+    synchronizer sync_data_read_inst (
+        .clk(clk),
+        .resetn(resetn),
+        .async_signal(data_read),
+        .sync_signal(sync_data_read)
+    );
+
     // State Machine Transitions
     always_ff @(posedge clk or negedge resetn) begin
         if (!resetn) begin
             current_state <= IDLE;
-        end else if (data_read == 0) begin  // Only update state when not being acked
+        end else if (!sync_data_read) begin  // Only update state when not being acked
             current_state <= next_state;
         end
     end
@@ -99,7 +108,7 @@ module spi_master #(
             ack_data_read <= 0;
             data_error <= 0;
         end else begin
-            if (data_read) begin
+            if (sync_data_read) begin
                 data_out   <= 0;
                 data_ready <= 0;
                 data_error <= 0;
