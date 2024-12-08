@@ -55,7 +55,7 @@ module spi_master #(
     always_ff @(posedge clk or negedge resetn) begin
         if (!resetn) begin
             current_state <= IDLE;
-        end else if (data_read != 1) begin  // Don't update state while data_read is being held high
+        end else if (data_read == 0) begin  // Only update state when not being acked
             current_state <= next_state;
         end
     end

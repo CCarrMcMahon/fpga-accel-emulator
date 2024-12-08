@@ -74,7 +74,7 @@ module uart_receiver #(
     always_ff @(posedge clk or negedge resetn) begin
         if (!resetn) begin
             current_state <= IDLE;
-        end else begin
+        end else if (data_read == 0) begin  // Only update state when not being acked
             current_state <= next_state;
         end
     end
@@ -122,11 +122,13 @@ module uart_receiver #(
             data_out <= 0;
             data_ready <= 0;
             data_error <= 0;
-        end else if (data_read) begin
-            data_out   <= 0;
-            data_ready <= 0;
-            data_error <= 0;
         end else begin
+            if (data_read) begin
+                data_out   <= 0;
+                data_ready <= 0;
+                data_error <= 0;
+            end
+
             case (current_state)
                 IDLE: begin
                     baud_clear <= 1;
