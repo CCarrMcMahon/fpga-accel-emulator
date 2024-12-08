@@ -98,7 +98,7 @@ module spi_master #(
     );
 
     // Instantiate a synchronizer for start_tx
-    synchronizer sync_data_read_inst (
+    synchronizer sync_start_tx_inst (
         .clk(clk),
         .resetn(resetn),
         .async_signal(start_tx),
