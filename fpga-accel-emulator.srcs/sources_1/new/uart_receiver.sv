@@ -26,12 +26,21 @@ module uart_receiver #(
     parameter int ClkFreq  = 100_000_000,
     parameter int BaudRate = 9600
 ) (
+    // Clock and Reset
     input logic clk,
     input logic resetn,
-    input logic rx,
-    output logic [7:0] data_out,
-    output logic data_ready,
+
+    // Control Signals
     input logic data_read,
+
+    // UART Interface
+    input logic rx,
+
+    // Data Signals
+    output logic [7:0] data_out,
+
+    // Status Signals
+    output logic data_ready,
     output logic data_error
 );
     // States
@@ -41,7 +50,7 @@ module uart_receiver #(
         DATA,
         STOP
     } state_t;
-    state_t state, next_state;
+    state_t current_state, next_state;
 
     // Internal signals
     logic baud_clear;
@@ -64,16 +73,16 @@ module uart_receiver #(
     // State Machine Transitions
     always_ff @(posedge clk or negedge resetn) begin
         if (!resetn) begin
-            state <= IDLE;
+            current_state <= IDLE;
         end else begin
-            state <= next_state;
+            current_state <= next_state;
         end
     end
 
     // State Machine Logic
     always_comb begin
-        next_state = state;
-        case (state)
+        next_state = current_state;
+        case (current_state)
             IDLE: begin
                 // Start bit detected and any previous data has been read
                 if (rx == 0 && !data_ready) begin
@@ -120,7 +129,7 @@ module uart_receiver #(
             data_ready <= 0;
             data_error <= 0;
         end else begin
-            case (state)
+            case (current_state)
                 IDLE: begin
                     baud_clear <= 1;
                     if (rx == 0 && data_ready) begin
