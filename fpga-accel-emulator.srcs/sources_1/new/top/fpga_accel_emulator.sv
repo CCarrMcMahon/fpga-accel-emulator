@@ -79,7 +79,7 @@ module fpga_accel_emulator (
         .clk(clk100mhz),
         .resetn(cpu_resetn),
         .start_tx(uart_data_out_ready),
-        .data_out_read(spi_slave_read_data_in),
+        .data_out_read(btnc),
         .mosi(mosi),
         .miso(miso),
         .sclk(sclk),
