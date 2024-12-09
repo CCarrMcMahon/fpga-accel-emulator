@@ -99,7 +99,9 @@ module spi_slave #(
                 end
             end
             STOP: begin
-                if (data_out_ready) begin
+                // Return to idle once csn is released
+                // NOTE: Will have to be adjusted if multi-byte transfer is implemented
+                if (csn) begin
                     next_state = IDLE;
                 end
             end
@@ -140,10 +142,10 @@ module spi_slave #(
 
                     // Store input data and ack that is has been read
                     shift_reg <= data_in;
-                    read_data_in <= 1;  // FIXME: Why isn't this toggling???
+                    read_data_in <= 1;
                 end
                 DATA: begin
-                    // Clear ack now that it has been read
+                    // Clear signal now that it has been read
                     read_data_in <= 0;
 
                     // Wait for clock transition (first bit should be sent immediately)

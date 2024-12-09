@@ -196,7 +196,7 @@ module spi_master #(
                     read_data_in <= 1;
                 end
                 DATA: begin
-                    // Clear ack now that it has been read
+                    // Clear signal now that it has been read
                     read_data_in <= 0;
 
                     // Wait for clock transition (first bit should be sent immediately)
