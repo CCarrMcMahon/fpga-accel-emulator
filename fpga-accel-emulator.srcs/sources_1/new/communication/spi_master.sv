@@ -1,46 +1,37 @@
 /**
  * @module spi_master
- * @param ClkFreq   Clock frequency in Hz (default: 100,000,000)
- * @param SclkFreq  SPI serial clock frequency in Hz (default: 1,000,000)
+ * @brief SPI Master Module
  *
- * @input clk            System clock signal
- * @input resetn         Active-low reset signal
- * @input start_tx       Signal to start SPI transmission
- * @input data_out_read  Signal indicating that data_out has been read
- * @input miso           Master In Slave Out signal
- * @input [7:0] data_in  8-bit data input
+ * This module implements a SPI master that communicates with SPI slave devices. It transmits data from `data_in` to the
+ * `mosi` output and receives data from the `miso` input, outputting the received byte on `data_out`. The module
+ * operates at a configurable SPI clock frequency and system clock frequency.
  *
- * @output mosi            Master Out Slave In signal
- * @output sclk            SPI serial clock signal
- * @output csn             Chip select signal (active low)
- * @output [7:0] data_out  8-bit data output
- * @output data_out_ready  Signal indicating data_out is ready to be read
- * @output read_data_in    Signal indicating that we read data_in
- * @output data_error      Signal indicating an error in data transmission
+ * @param ClkFreq  The frequency of the input clock in Hz (default: 100 MHz).
+ * @param SclkFreq The desired SPI serial clock frequency in Hz (default: 1 MHz).
  *
- * This module implements a SPI master with the following features:
- * - Synchronizes the `data_out_read` and `start_tx` signals to the system clock
- * - Uses a state machine to manage the SPI transmission process
- * - Generates the SPI clock signal according to the specified frequency
- * - Handles the SPI protocol including chip select, data shifting, and clocking
- * - Outputs received data and status signals
+ * @input clk          The system clock input.
+ * @input resetn       Active-low reset signal.
+ * @input start_tx     Signal to start the SPI transmission.
+ * @input data_out_ack Acknowledgment signal indicating that the data has been read.
+ * @input miso         SPI Master In Slave Out data input.
+ * @input data_in      The byte of data to be transmitted.
  *
- * The state machine has four states:
- * - IDLE: Waits for a start transmission signal
- * - START: Prepares for data transmission
- * - DATA: Shifts data bits in and out
- * - STOP: Finalizes the transmission and sets the output signals
+ * @output mosi           SPI Master Out Slave In data output.
+ * @output sclk           SPI serial clock output.
+ * @output csn            Chip select (active low) output.
+ * @output data_out       The received byte of data.
+ * @output data_out_ready Indicates that a new byte of data is available.
+ * @output data_in_stored Indicates that the input data has been stored for transmission.
+ * @output data_error     Indicates an error in the data transmission or reception.
  *
- * Internal signals include:
- * - `sclk_clear`: Clears the SPI clock generator
- * - `bit_counter`: Counts the number of transmitted/received data bits
- * - `shift_reg`: Shift register for data bits
- * - `prev_sclk`: Previous state of the SPI clock signal
- * - `sync_data_out_read`: Synchronized `data_out_read` signal
- * - `sync_start_tx`: Synchronized `start_tx` signal
+ * The module uses a state machine to manage the transmission process, which includes the following states:
+ * - IDLE: Waiting for the start signal.
+ * - START: Preparing for data transmission.
+ * - DATA: Transmitting and receiving data bits.
+ * - STOP: Finalizing the transmission and outputting the received byte.
  *
- * The module instantiates a clock generator for the SPI clock and synchronizers for the `data_out_read` and `start_tx`
- * signals.
+ * The module also includes internal logic for synchronizing the `start_tx` and `data_out_ack` signals, and a clock
+ * generator for generating the SPI clock.
  */
 module spi_master #(
     parameter int ClkFreq = 100_000_000,  // Input clock frequency in Hz
@@ -52,7 +43,7 @@ module spi_master #(
 
     // Control Signals
     input logic start_tx,
-    input logic data_out_read,
+    input logic data_out_ack,
 
     // SPI Interface
     output logic mosi,
@@ -66,7 +57,7 @@ module spi_master #(
 
     // Status Signals
     output logic data_out_ready,
-    output logic read_data_in,
+    output logic data_in_stored,
     output logic data_error
 );
     // States
@@ -79,45 +70,45 @@ module spi_master #(
     state_t current_state, next_state;
 
     // Internal Signals
-    logic sclk_clear;
+    logic clear_sclk_clock_gen;
     logic [3:0] bit_counter;
     logic [7:0] shift_reg;
     logic prev_sclk;
-    logic sync_start_tx;
-    logic sync_data_out_read;
+    logic synced_start_tx;
+    logic synced_data_out_ack;
 
     // Instantiate a clock generator for the SPI clock
     clock_generator #(
         .ClkInFreq (ClkFreq),
         .ClkOutFreq(SclkFreq)
-    ) sclk_freq_clock_gen (
+    ) sclk_freq_clock_generator_inst_1 (
         .clk_in (clk),
         .resetn (resetn),
-        .clear  (sclk_clear),
+        .clear  (clear_sclk_clock_gen),
         .clk_out(sclk)
     );
 
     // Instantiate a synchronizer for start_tx
-    synchronizer sync_start_tx_inst (
+    synchronizer start_tx_synchronizer_inst_1 (
         .clk(clk),
         .resetn(resetn),
         .async_signal(start_tx),
-        .sync_signal(sync_start_tx)
+        .sync_signal(synced_start_tx)
     );
 
-    // Instantiate a synchronizer for data_out_read
-    synchronizer sync_data_out_read_inst (
+    // Instantiate a synchronizer for data_out_ack
+    synchronizer data_out_ack_synchronizer_inst_1 (
         .clk(clk),
         .resetn(resetn),
-        .async_signal(data_out_read),
-        .sync_signal(sync_data_out_read)
+        .async_signal(data_out_ack),
+        .sync_signal(synced_data_out_ack)
     );
 
     // State Machine Transitions
     always_ff @(posedge clk or negedge resetn) begin
         if (!resetn) begin
             current_state <= IDLE;
-        end else if (!sync_data_out_read) begin  // Only update state when data_out is not being read
+        end else if (!synced_data_out_ack) begin  // Only update state when data_out is not being read
             current_state <= next_state;
         end
     end
@@ -128,12 +119,12 @@ module spi_master #(
         case (current_state)
             IDLE: begin
                 // Start transmission requested and previous data has been read
-                if (sync_start_tx && !data_out_ready) begin
+                if (synced_start_tx && !data_out_ready) begin
                     next_state = START;
                 end
             end
             START: begin
-                if (read_data_in) begin
+                if (data_in_stored) begin
                     next_state = DATA;
                 end
             end
@@ -155,7 +146,7 @@ module spi_master #(
     // SPI Master Logic
     always_ff @(posedge clk or negedge resetn) begin
         if (!resetn) begin
-            sclk_clear <= 1;
+            clear_sclk_clock_gen <= 1;
             bit_counter <= 0;
             shift_reg <= 0;
             prev_sclk <= 1;
@@ -163,10 +154,10 @@ module spi_master #(
             csn <= 1;
             data_out <= 0;
             data_out_ready <= 0;
-            read_data_in <= 0;
+            data_in_stored <= 0;
             data_error <= 0;
         end else begin
-            if (sync_data_out_read) begin
+            if (synced_data_out_ack) begin
                 data_out <= 0;
                 data_out_ready <= 0;
                 data_error <= 0;
@@ -175,29 +166,29 @@ module spi_master #(
             case (current_state)
                 IDLE: begin
                     // Keep the clock and chip disabled while idle
-                    sclk_clear <= 1;
+                    clear_sclk_clock_gen <= 1;
                     prev_sclk <= 1;
                     mosi <= 0;
                     csn <= 1;
-                    if (sync_start_tx && data_out_ready) begin
+                    if (synced_start_tx && data_out_ready) begin
                         // New data detected but previous data hasn't been read
                         data_error <= 1;
                     end
                 end
                 START: begin
                     // Enable clock and chip
-                    sclk_clear <= 0;
+                    clear_sclk_clock_gen <= 0;
                     prev_sclk <= ~sclk;  // Set inverse so first bit is sent immediately
                     bit_counter <= 0;
                     csn <= 0;
 
                     // Store input data and ack that is has been read
                     shift_reg <= data_in;
-                    read_data_in <= 1;
+                    data_in_stored <= 1;
                 end
                 DATA: begin
                     // Clear signal now that it has been read
-                    read_data_in <= 0;
+                    data_in_stored <= 0;
 
                     // Wait for clock transition (first bit should be sent immediately)
                     if (sclk != prev_sclk && bit_counter < 8) begin
