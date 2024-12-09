@@ -1,22 +1,22 @@
 /**
  * @module spi_master
- * @param ClkFreq  Clock frequency in Hz (default: 100,000,000)
- * @param SclkFreq SPI serial clock frequency in Hz (default: 1,000,000)
+ * @param ClkFreq   Clock frequency in Hz (default: 100,000,000)
+ * @param SclkFreq  SPI serial clock frequency in Hz (default: 1,000,000)
  *
- * @input clk           System clock signal
- * @input resetn        Active-low reset signal
- * @input start_tx      Signal to start SPI transmission
- * @input data_out_read Signal indicating that data_out has been read
- * @input miso          Master In Slave Out signal
- * @input [7:0] data_in 8-bit data input
+ * @input clk            System clock signal
+ * @input resetn         Active-low reset signal
+ * @input start_tx       Signal to start SPI transmission
+ * @input data_out_read  Signal indicating that data_out has been read
+ * @input miso           Master In Slave Out signal
+ * @input [7:0] data_in  8-bit data input
  *
- * @output mosi           Master Out Slave In signal
- * @output sclk           SPI serial clock signal
- * @output csn            Chip select signal (active low)
- * @output [7:0] data_out 8-bit data output
- * @output data_out_ready Signal indicating data_out is ready to be read
- * @output read_data_in   Signal indicating that we read data_in
- * @output data_error     Signal indicating an error in data transmission
+ * @output mosi            Master Out Slave In signal
+ * @output sclk            SPI serial clock signal
+ * @output csn             Chip select signal (active low)
+ * @output [7:0] data_out  8-bit data output
+ * @output data_out_ready  Signal indicating data_out is ready to be read
+ * @output read_data_in    Signal indicating that we read data_in
+ * @output data_error      Signal indicating an error in data transmission
  *
  * This module implements a SPI master with the following features:
  * - Synchronizes the `data_out_read` and `start_tx` signals to the system clock

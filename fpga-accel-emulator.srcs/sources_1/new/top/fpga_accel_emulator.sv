@@ -2,14 +2,14 @@
 /**
  * @module fpga_accel_emulator
  *
- * @input clk100mhz  100 MHz system clock signal
- * @input cpu_resetn Active-low reset signal
- * @input uart_txd_in UART transmit data input
- * @input btnc       Button input for data read
+ * @input clk100mhz    100 MHz system clock signal
+ * @input cpu_resetn   Active-low reset signal
+ * @input uart_txd_in  UART transmit data input
+ * @input btnc         Button input for data read
  *
- * @output [7:0] ja  General-purpose output signals
- * @output [1:0] jb  General-purpose output signals
- * @output [7:0] led LED output signals
+ * @output [7:0] ja   General-purpose output signals
+ * @output [1:0] jb   General-purpose output signals
+ * @output [7:0] led  LED output signals
  *
  * This top-level module is a work in progress which currently integrates a UART receiver and an SPI master to test
  * transforming incoming UART data to SPI data. It includes:
