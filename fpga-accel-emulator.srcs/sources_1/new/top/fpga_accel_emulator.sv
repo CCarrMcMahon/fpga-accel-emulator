@@ -7,22 +7,28 @@
  * @input uart_txd_in  UART transmit data input
  * @input btnc         Button input for data read
  *
- * @output [7:0] ja   General-purpose output signals
- * @output [1:0] jb   General-purpose output signals
- * @output [7:0] led  LED output signals
+ * @output [7:0] ja    General-purpose output signals
+ * @output [5:0] jb    General-purpose output signals
+ * @output [15:0] led  LED output signals
  *
  * This top-level module is a work in progress which currently integrates a UART receiver and an SPI master to test
  * transforming incoming UART data to SPI data. It includes:
  * - Instantiation of the `uart_receiver` module for UART communication
  * - Instantiation of the `spi_master` module for SPI communication
+ * - Instantiation of the `spi_slave` module for SPI communication
  * - Final assignments to output signals for debugging and status indication
  *
  * Internal signals include:
- * - UART signals: `uart_data_out`, `uart_data_ready`, `uart_data_error`
- * - SPI signals: `mosi`, `miso`, `sclk`, `csn`, `spi_data_out`, `spi_data_ready`, `spi_ack_data_read`, `spi_data_error`
+ * - UART signals: `uart_data_out`, `uart_data_out_ready`, `uart_data_error`
+ * - SPI signals: `mosi`, `miso`, `sclk`, `csn`
+ * - SPI master signals: `spi_master_data_out_read`, `spi_master_data_out_reg`, `spi_master_data_out`,
+ *   `spi_master_data_out_ready`, `spi_master_read_data_in`, `spi_master_data_error`
+ * - SPI slave signals: `spi_slave_data_out_read`, `spi_slave_data_out_reg`, `spi_slave_data_out`,
+ *   `spi_slave_data_out_ready`, `spi_slave_read_data_in`, `spi_slave_data_error`
  *
- * The module connects the UART receiver output to the SPI master input, and uses the button input to acknowledge data
- * read.
+ * The module connects the UART receiver output to the SPI master input, which then passes the data along to the SPI
+ * slave where it saves the data and passes it back to the master. The output of both SPI modules are displayed on the
+ * LEDs.
  */
 module fpga_accel_emulator (
     input logic clk100mhz,
