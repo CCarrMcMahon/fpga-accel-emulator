@@ -10,8 +10,8 @@ FPGA-Accel-Emulator is an FPGA-based project designed to emulate the functionali
 
 ## Current Functionality
 
--   **UART Receiver Module**: Converts UART serial data from the RX line to an 8-bit register along with ready and error signals. It synchronizes the `rx` and `data_read` signals to the system clock, uses a state machine to manage the reception process, and detects start, data, and stop bits according to the specified baud rate.
--   **SPI Master Module**: Facilitates communication with SPI slave devices. It synchronizes the `data_read` and `start_tx` signals to the system clock, uses a state machine to manage the SPI transmission process, generates the SPI clock signal according to the specified frequency, and handles the SPI protocol including chip select, data shifting, and clocking.
+-   **UART Receiver Module**: Converts UART serial data from the RX line to an 8-bit register along with ready and error signals. It synchronizes the `rx` and `data_out_read` signals to the system clock, uses a state machine to manage the reception process, and detects start, data, and stop bits according to the specified baud rate.
+-   **SPI Master Module**: Facilitates communication with SPI slave devices. It synchronizes the `data_out_read` and `start_tx` signals to the system clock, uses a state machine to manage the SPI transmission process, generates the SPI clock signal according to the specified frequency, and handles the SPI protocol including chip select, data shifting, and clocking.
 
 ## Future Functionality
 
