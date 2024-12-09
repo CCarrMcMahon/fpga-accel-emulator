@@ -1,25 +1,23 @@
 /**
  * @module pulse_generator
- * @param ClkInFreq    Input clock frequency in Hz (default: 100,000,000)
- * @param PulseOutFreq Output pulse frequency in Hz (default: 1,000,000)
- * @param PhaseShift   Phase shift for the output pulse (default: 0.0)
+ * @brief Pulse Generator Module
  *
- * @input clk_in   Input clock signal
- * @input resetn   Active-low reset signal
- * @input clear    Asynchronous clear signal
+ * This module generates an output pulse `pulse_out` with a specified frequency and phase shift from an input clock
+ * `clk_in`. The output pulse frequency and phase shift are configurable through parameters.
  *
- * @output pulse_out Generated pulse output signal
+ * @param ClkInFreq    The frequency of the input clock in Hz (default: 100 MHz).
+ * @param PulseOutFreq The desired frequency of the output pulse in Hz (default: 1 MHz).
+ * @param PhaseShift   The phase shift for the output pulse, specified as a fraction of the clock period (default: 0.0).
  *
- * This module generates a pulse signal with a specified frequency and optional phase shift. It includes:
- * - A clock divider to generate the desired pulse frequency
- * - A phase shift mechanism to adjust the output pulse phase
- * - Synchronization of the asynchronous clear signal to the input clock domain
+ * @input clk_in The input clock signal.
+ * @input resetn Active-low reset signal.
+ * @input clear  Signal to clear and reset the pulse generator.
  *
- * Internal signals include:
- * - `counter`: Counter for pulse generation
+ * @output pulse_out The generated output pulse signal.
  *
- * The module uses an always_ff block to handle the clock division and pulse generation logic. The clear signal is
- * synchronized to the input clock domain to ensure safe operation.
+ * The module calculates the necessary divider value and counter bits based on the input and output pulse frequencies.
+ * It also ensures that the phase shift is within a valid range [0.0, 1.0]. The internal counter and logic generate the
+ * output pulse with the specified frequency and phase shift.
  */
 module pulse_generator #(
     parameter int  ClkInFreq    = 100_000_000,  // Input clock frequency in Hz
@@ -43,14 +41,14 @@ module pulse_generator #(
 
     // Internal signals
     logic [CounterBits-1:0] counter;
-    logic sync_clear;
+    logic synced_clear;
 
     // Instantiate a synchronizer for the clear signal
-    synchronizer sync_clear_inst (
+    synchronizer clear_synchronizer_inst_1 (
         .clk(clk_in),
         .resetn(resetn),
         .async_signal(clear),
-        .sync_signal(sync_clear)
+        .sync_signal(synced_clear)
     );
 
     // Pulse generation logic
@@ -58,7 +56,7 @@ module pulse_generator #(
         if (!resetn) begin
             counter   <= ShiftOffset;
             pulse_out <= 0;
-        end else if (sync_clear) begin
+        end else if (synced_clear) begin
             counter   <= ShiftOffset;
             pulse_out <= 0;
         end else begin

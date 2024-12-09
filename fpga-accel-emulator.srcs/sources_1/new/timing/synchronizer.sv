@@ -1,21 +1,18 @@
 /**
  * @module synchronizer
+ * @brief Signal Synchronizer Module
  *
- * @input clk          System clock signal
- * @input resetn       Active-low reset signal
- * @input async_signal Asynchronous input signal to be synchronized
+ * This module synchronizes an asynchronous input signal `async_signal` to the clock domain of `clk`. It uses a
+ * two-stage flip-flop to mitigate metastability issues and provide a stable synchronized output `sync_signal`.
  *
- * @output sync_signal Synchronized output signal
+ * @input clk          The clock signal to which the asynchronous signal is synchronized.
+ * @input resetn       Active-low reset signal.
+ * @input async_signal The asynchronous input signal to be synchronized.
  *
- * This module synchronizes an asynchronous input signal to the system clock domain. It uses a two-stage
- * flip-flop synchronizer to mitigate metastability issues and ensure a stable output.
+ * @output sync_signal The synchronized output signal.
  *
- * Internal signals include:
- * - `stage1`: First stage flip-flop output
- * - `stage2`: Second stage flip-flop output
- *
- * The always_ff block updates the stages on the rising edge of the clock or resets them on the falling edge of the
- * reset signal. The synchronized signal is taken from the output of the second stage flip-flop.
+ * The module uses two flip-flop stages to synchronize the asynchronous signal. On each rising edge of the clock, the
+ * asynchronous signal is sampled and passed through the two stages, resulting in a stable synchronized output.
  */
 module synchronizer (
     input  logic clk,
@@ -27,8 +24,8 @@ module synchronizer (
 
     always_ff @(posedge clk or negedge resetn) begin
         if (!resetn) begin
-            stage1 <= 1'b0;
-            stage2 <= 1'b0;
+            stage1 <= 0;
+            stage2 <= 0;
         end else begin
             stage1 <= async_signal;
             stage2 <= stage1;

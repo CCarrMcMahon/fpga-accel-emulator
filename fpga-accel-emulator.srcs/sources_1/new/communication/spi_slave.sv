@@ -1,25 +1,34 @@
 /**
  * @module spi_slave
- * @param ClkFreq  Clock frequency in Hz (default: 100,000,000)
+ * @brief SPI Slave Module
  *
- * @input clk            System clock signal
- * @input resetn         Active-low reset signal
- * @input data_out_read  Signal indicating that data_out has been read
- * @input mosi           Master Out Slave In signal
- * @input sclk           SPI serial clock signal from master
- * @input csn            Chip select signal from master (active low)
- * @input [7:0] data_in  8-bit data input
+ * This module implements a SPI slave that communicates with a SPI master device. It receives data from the `mosi` input
+ * and transmits data on the `miso` output, outputting the received byte on `data_out`. The module operates at a
+ * configurable system clock frequency.
  *
- * @output miso            Master In Slave Out signal
- * @output [7:0] data_out  8-bit data output
- * @output data_out_ready  Signal indicating data_out is ready to be read
- * @output read_data_in    Signal indicating that we read data_in
- * @output data_error      Signal indicating an error in data transmission
+ * @param ClkFreq The frequency of the input clock in Hz (default: 100 MHz).
  *
- * This module implements a basic SPI slave with the following features:
- * - Receives data from the SPI master and outputs it
- * - Sends data to the SPI master
- * - Uses a state machine to manage the SPI reception and transmission process
+ * @input clk          The system clock input.
+ * @input resetn       Active-low reset signal.
+ * @input data_out_ack Acknowledgment signal indicating that the data has been read.
+ * @input mosi         SPI Master Out Slave In data input.
+ * @input sclk         SPI serial clock input.
+ * @input csn          Chip select (active low) input.
+ * @input data_in      The byte of data to be transmitted.
+ *
+ * @output miso           SPI Master In Slave Out data output.
+ * @output data_out       The received byte of data.
+ * @output data_out_ready Indicates that a new byte of data is available.
+ * @output data_in_stored Indicates that the input data has been stored for transmission.
+ * @output data_error     Indicates an error in the data transmission or reception.
+ *
+ * The module uses a state machine to manage the reception and transmission process, which includes the following states:
+ * - IDLE: Waiting for the chip select signal.
+ * - START: Preparing for data reception.
+ * - DATA: Receiving and transmitting data bits.
+ * - STOP: Finalizing the reception and outputting the received byte.
+ *
+ * The module also includes internal logic for synchronizing the `data_out_ack` signal.
  */
 module spi_slave #(
     parameter int ClkFreq = 100_000_000  // Input clock frequency in Hz
@@ -29,7 +38,7 @@ module spi_slave #(
     input logic resetn,
 
     // Control Signals
-    input logic data_out_read,
+    input logic data_out_ack,
 
     // SPI Interface
     input  logic mosi,
@@ -43,7 +52,7 @@ module spi_slave #(
 
     // Status Signals
     output logic data_out_ready,
-    output logic read_data_in,
+    output logic data_in_stored,
     output logic data_error
 );
     // States
@@ -59,21 +68,21 @@ module spi_slave #(
     logic [3:0] bit_counter;
     logic [7:0] shift_reg;
     logic prev_sclk;
-    logic sync_data_out_read;
+    logic synced_data_out_ack;
 
-    // Instantiate a synchronizer for data_out_read
-    synchronizer sync_data_out_read_inst (
+    // Instantiate a synchronizer for data_out_ack
+    synchronizer data_out_ack_synchronizer_inst_1 (
         .clk(clk),
         .resetn(resetn),
-        .async_signal(data_out_read),
-        .sync_signal(sync_data_out_read)
+        .async_signal(data_out_ack),
+        .sync_signal(synced_data_out_ack)
     );
 
     // State Machine Transitions
     always_ff @(posedge clk or negedge resetn) begin
         if (!resetn) begin
             current_state <= IDLE;
-        end else if (!sync_data_out_read) begin  // Only update state when data_out is not being read
+        end else if (!synced_data_out_ack) begin  // Only update state when data_out is not being read
             current_state <= next_state;
         end
     end
@@ -89,7 +98,7 @@ module spi_slave #(
                 end
             end
             START: begin
-                if (read_data_in) begin
+                if (data_in_stored) begin
                     next_state = DATA;
                 end
             end
@@ -118,10 +127,10 @@ module spi_slave #(
             miso <= 0;
             data_out <= 0;
             data_out_ready <= 0;
-            read_data_in <= 0;
+            data_in_stored <= 0;
             data_error <= 0;
         end else begin
-            if (sync_data_out_read) begin
+            if (synced_data_out_ack) begin
                 data_out <= 0;
                 data_out_ready <= 0;
                 data_error <= 0;
@@ -142,11 +151,11 @@ module spi_slave #(
 
                     // Store input data and ack that is has been read
                     shift_reg <= data_in;
-                    read_data_in <= 1;
+                    data_in_stored <= 1;
                 end
                 DATA: begin
                     // Clear signal now that it has been read
-                    read_data_in <= 0;
+                    data_in_stored <= 0;
 
                     // Wait for clock transition (first bit should be sent immediately)
                     if (sclk != prev_sclk && bit_counter < 8) begin

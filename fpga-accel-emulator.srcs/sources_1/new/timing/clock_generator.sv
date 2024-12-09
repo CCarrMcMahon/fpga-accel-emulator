@@ -1,26 +1,23 @@
 /**
  * @module clock_generator
- * @param ClkInFreq  Input clock frequency in Hz (default: 100,000,000)
- * @param ClkOutFreq Output clock frequency in Hz (default: 1,000,000)
- * @param PhaseShift Phase shift for the output clock (default: 0.0)
+ * @brief Clock Generator Module
  *
- * @input clk_in  Input clock signal
- * @input resetn  Active-low reset signal
- * @input clear   Asynchronous clear signal
+ * This module generates an output clock `clk_out` with a specified frequency and phase shift from an input clock
+ * `clk_in`. The output clock frequency and phase shift are configurable through parameters.
  *
- * @output clk_out Generated clock output signal
+ * @param ClkInFreq  The frequency of the input clock in Hz (default: 100 MHz).
+ * @param ClkOutFreq The desired frequency of the output clock in Hz (default: 1 MHz).
+ * @param PhaseShift The phase shift for the output clock, specified as a fraction of the clock period (default: 0.0).
  *
- * This module generates a clock signal with a specified frequency and optional phase shift. It includes:
- * - A clock divider to generate the desired output frequency
- * - A phase shift mechanism to adjust the output clock phase
- * - Synchronization of the asynchronous clear signal to the input clock domain
+ * @input clk_in The input clock signal.
+ * @input resetn Active-low reset signal.
+ * @input clear  Signal to clear and reset the clock generator.
  *
- * Internal signals include:
- * - `counter`: Counter for clock division
- * - `sync_clear`: Synchronized clear signal
+ * @output clk_out The generated output clock signal.
  *
- * The module instantiates a synchronizer for the `clear` signal to ensure it is safely sampled and used within the
- * clock domain.
+ * The module calculates the necessary divider value and counter bits based on the input and output clock frequencies.
+ * It also ensures that the phase shift is within a valid range [0.0, 1.0]. The internal counter and logic generate the
+ * output clock with the specified frequency and phase shift.
  */
 module clock_generator #(
     parameter int  ClkInFreq  = 100_000_000,  // Input clock frequency in Hz
@@ -44,14 +41,14 @@ module clock_generator #(
 
     // Internal signals
     logic [CounterBits-1:0] counter;
-    logic sync_clear;
+    logic synced_clear;
 
     // Instantiate a synchronizer for the clear signal
-    synchronizer sync_clear_inst (
+    synchronizer clear_synchronizer_inst_1 (
         .clk(clk_in),
         .resetn(resetn),
         .async_signal(clear),
-        .sync_signal(sync_clear)
+        .sync_signal(synced_clear)
     );
 
     // Clock generation logic
@@ -59,7 +56,7 @@ module clock_generator #(
         if (!resetn) begin
             counter <= ShiftOffset;
             clk_out <= 0;
-        end else if (sync_clear) begin
+        end else if (synced_clear) begin
             counter <= ShiftOffset;
             clk_out <= 0;
         end else begin
