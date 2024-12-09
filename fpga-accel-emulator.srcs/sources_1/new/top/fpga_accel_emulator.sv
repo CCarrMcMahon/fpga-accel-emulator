@@ -45,17 +45,21 @@ module fpga_accel_emulator (
     logic csn;
 
     // SPI master signals
+    logic spi_master_data_out_read;
+    logic [7:0] spi_master_data_out_reg;
     logic [7:0] spi_master_data_out;
     logic spi_master_data_out_ready;
     logic spi_master_read_data_in;
     logic spi_master_data_error;
 
     // SPI slave signals
+    logic spi_slave_data_out_read;
+    logic [7:0] spi_slave_data_out_reg;
     logic [7:0] spi_slave_data_out;
     logic spi_slave_data_out_ready;
     logic spi_slave_read_data_in;
     logic spi_slave_data_error;
-    logic [7:0] spi_slave_data_in = 8'h6B;
+
 
     // Instantiate the uart_receiver module
     uart_receiver #(
@@ -79,7 +83,7 @@ module fpga_accel_emulator (
         .clk(clk100mhz),
         .resetn(cpu_resetn),
         .start_tx(uart_data_out_ready),
-        .data_out_read(btnc),
+        .data_out_read(spi_master_data_out_read),
         .mosi(mosi),
         .miso(miso),
         .sclk(sclk),
@@ -97,17 +101,36 @@ module fpga_accel_emulator (
     ) spi_slave_inst (
         .clk(clk100mhz),
         .resetn(cpu_resetn),
-        .data_out_read(btnc),
+        .data_out_read(spi_slave_data_out_read),
         .mosi(mosi),
         .miso(miso),
         .sclk(sclk),
         .csn(csn),
-        .data_in(spi_slave_data_in),
+        .data_in(spi_slave_data_out_reg),
         .data_out(spi_slave_data_out),
         .data_out_ready(spi_slave_data_out_ready),
         .read_data_in(spi_slave_read_data_in),
         .data_error(spi_slave_data_error)
     );
+
+    // Send received spi data back to master and clear master data
+    always @(posedge clk100mhz or negedge cpu_resetn) begin
+        if (!cpu_resetn) begin
+            spi_master_data_out_read <= 0;
+            spi_master_data_out_reg  <= 0;
+            spi_slave_data_out_read  <= 0;
+            spi_slave_data_out_reg   <= 0;
+        end else if (spi_master_data_out_ready) begin
+            spi_master_data_out_reg  <= spi_master_data_out;
+            spi_master_data_out_read <= 1;
+        end else if (spi_slave_data_out_ready) begin
+            spi_slave_data_out_reg  <= spi_slave_data_out;
+            spi_slave_data_out_read <= 1;
+        end else begin
+            spi_master_data_out_read <= 0;
+            spi_slave_data_out_read  <= 0;
+        end
+    end
 
     // Final Assignments
     assign ja = {csn, sclk, miso, mosi, btnc, uart_data_error, uart_data_out_ready, uart_txd_in};
@@ -119,5 +142,5 @@ module fpga_accel_emulator (
         spi_master_read_data_in,
         spi_master_data_out_ready
     };
-    assign led = {spi_slave_data_out, spi_master_data_out};
+    assign led = {spi_master_data_out_reg, spi_slave_data_out_reg};
 endmodule
