@@ -1,16 +1,16 @@
 /**
  * @module uart_receiver
- * @param ClkFreq  Clock frequency in Hz (default: 100,000,000)
- * @param BaudRate Baud rate for UART communication (default: 9600)
+ * @param ClkFreq   Clock frequency in Hz (default: 100,000,000)
+ * @param BaudRate  Baud rate for UART communication (default: 9600)
  *
- * @input clk           System clock signal
- * @input resetn        Active-low reset signal
- * @input data_out_read Signal indicating that data_out has been read
- * @input rx            UART receive signal
+ * @input clk            System clock signal
+ * @input resetn         Active-low reset signal
+ * @input data_out_read  Signal indicating that data_out has been read
+ * @input rx             UART receive signal
  *
- * @output data_out       8-bit data output
- * @output data_out_ready Signal indicating data_out is ready to be read
- * @output data_error     Signal indicating an error in data reception
+ * @output data_out        8-bit data output
+ * @output data_out_ready  Signal indicating data_out is ready to be read
+ * @output data_error      Signal indicating an error in data reception
  *
  * This module implements a UART receiver with the following features:
  * - Synchronizes the `rx` and `data_out_read` signals to the system clock
