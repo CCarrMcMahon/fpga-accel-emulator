@@ -133,7 +133,9 @@ module spi_master #(
                 end
             end
             START: begin
-                next_state = DATA;
+                if (read_data_in) begin
+                    next_state = DATA;
+                end
             end
             DATA: begin
                 // Wait for a clock transition from high to low after all bits have been transferred
@@ -142,7 +144,9 @@ module spi_master #(
                 end
             end
             STOP: begin
-                next_state = IDLE;
+                if (data_out_ready) begin
+                    next_state = IDLE;
+                end
             end
             default: next_state = IDLE;
         endcase

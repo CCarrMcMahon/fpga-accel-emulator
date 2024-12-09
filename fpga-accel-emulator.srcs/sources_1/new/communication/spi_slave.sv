@@ -89,7 +89,9 @@ module spi_slave #(
                 end
             end
             START: begin
-                next_state = DATA;
+                if (read_data_in) begin
+                    next_state = DATA;
+                end
             end
             DATA: begin
                 if (prev_sclk == !sclk && bit_counter == 8) begin
@@ -97,7 +99,9 @@ module spi_slave #(
                 end
             end
             STOP: begin
-                next_state = IDLE;
+                if (data_out_ready) begin
+                    next_state = IDLE;
+                end
             end
             default: next_state = IDLE;
         endcase
@@ -136,7 +140,7 @@ module spi_slave #(
 
                     // Store input data and ack that is has been read
                     shift_reg <= data_in;
-                    read_data_in <= 1;
+                    read_data_in <= 1;  // FIXME: Why isn't this toggling???
                 end
                 DATA: begin
                     // Clear ack now that it has been read
