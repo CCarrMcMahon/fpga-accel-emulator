@@ -35,7 +35,7 @@ module fpga_accel_emulator (
 );
     // UART signals
     logic [7:0] uart_data_out;
-    logic uart_data_ready;
+    logic uart_data_out_ready;
     logic uart_data_error;
 
     // SPI signals
@@ -44,8 +44,8 @@ module fpga_accel_emulator (
     logic sclk;
     logic csn;
     logic [7:0] spi_data_out;
-    logic spi_data_ready;
-    logic spi_ack_data_read;
+    logic spi_data_out_ready;
+    logic spi_read_data_in;
     logic spi_data_error;
 
     // Instantiate the uart_receiver module
@@ -55,10 +55,10 @@ module fpga_accel_emulator (
     ) uart_receiver_inst (
         .clk(clk100mhz),
         .resetn(cpu_resetn),
-        .data_read(spi_ack_data_read),
+        .data_out_read(spi_read_data_in),
         .rx(uart_txd_in),
         .data_out(uart_data_out),
-        .data_ready(uart_data_ready),
+        .data_out_ready(uart_data_out_ready),
         .data_error(uart_data_error)
     );
 
@@ -69,21 +69,21 @@ module fpga_accel_emulator (
     ) spi_master_inst (
         .clk(clk100mhz),
         .resetn(cpu_resetn),
-        .start_tx(uart_data_ready),
-        .data_read(btnc),
+        .start_tx(uart_data_out_ready),
+        .data_out_read(btnc),
         .mosi(mosi),
         .miso(miso),
         .sclk(sclk),
         .csn(csn),
         .data_in(uart_data_out),
         .data_out(spi_data_out),
-        .data_ready(spi_data_ready),
-        .ack_data_read(spi_ack_data_read),
+        .data_out_ready(spi_data_out_ready),
+        .read_data_in(spi_read_data_in),
         .data_error(spi_data_error)
     );
 
     // Final Assignments
-    assign ja  = {spi_data_ready, csn, sclk, miso, mosi, spi_ack_data_read, uart_data_ready, uart_txd_in};
+    assign ja  = {spi_data_out_ready, csn, sclk, miso, mosi, spi_read_data_in, uart_data_out_ready, uart_txd_in};
     assign jb  = {spi_data_error, uart_data_error};
     assign led = {spi_data_out};
 endmodule
