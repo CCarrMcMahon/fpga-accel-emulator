@@ -30,8 +30,8 @@ module fpga_accel_emulator (
     input logic uart_txd_in,
     input logic btnc,
     output logic [7:0] ja,
-    output logic [1:0] jb,
-    output logic [7:0] led
+    output logic [5:0] jb,
+    output logic [15:0] led
 );
     // UART signals
     logic [7:0] uart_data_out;
@@ -40,13 +40,22 @@ module fpga_accel_emulator (
 
     // SPI signals
     logic mosi;
-    logic miso = 0;
+    logic miso;
     logic sclk;
     logic csn;
-    logic [7:0] spi_data_out;
-    logic spi_data_out_ready;
-    logic spi_read_data_in;
-    logic spi_data_error;
+
+    // SPI master signals
+    logic [7:0] spi_master_data_out;
+    logic spi_master_data_out_ready;
+    logic spi_master_read_data_in;
+    logic spi_master_data_error;
+
+    // SPI slave signals
+    logic [7:0] spi_slave_data_out;
+    logic spi_slave_data_out_ready;
+    logic spi_slave_read_data_in;
+    logic spi_slave_data_error;
+    logic [7:0] spi_slave_data_in = 8'h6B;
 
     // Instantiate the uart_receiver module
     uart_receiver #(
@@ -55,7 +64,7 @@ module fpga_accel_emulator (
     ) uart_receiver_inst (
         .clk(clk100mhz),
         .resetn(cpu_resetn),
-        .data_out_read(spi_read_data_in),
+        .data_out_read(spi_master_read_data_in),
         .rx(uart_txd_in),
         .data_out(uart_data_out),
         .data_out_ready(uart_data_out_ready),
@@ -65,25 +74,50 @@ module fpga_accel_emulator (
     // Instantiate the spi_master module
     spi_master #(
         .ClkFreq (100_000_000),
-        .SclkFreq(1_000_000)
+        .SclkFreq(9600)
     ) spi_master_inst (
         .clk(clk100mhz),
         .resetn(cpu_resetn),
         .start_tx(uart_data_out_ready),
-        .data_out_read(btnc),
+        .data_out_read(spi_slave_read_data_in),
         .mosi(mosi),
         .miso(miso),
         .sclk(sclk),
         .csn(csn),
         .data_in(uart_data_out),
-        .data_out(spi_data_out),
-        .data_out_ready(spi_data_out_ready),
-        .read_data_in(spi_read_data_in),
-        .data_error(spi_data_error)
+        .data_out(spi_master_data_out),
+        .data_out_ready(spi_master_data_out_ready),
+        .read_data_in(spi_master_read_data_in),
+        .data_error(spi_master_data_error)
+    );
+
+    // Instantiate the spi_slave module
+    spi_slave #(
+        .ClkFreq(100_000_000)
+    ) spi_slave_inst (
+        .clk(clk100mhz),
+        .resetn(cpu_resetn),
+        .data_out_read(btnc),
+        .mosi(mosi),
+        .miso(miso),
+        .sclk(sclk),
+        .csn(csn),
+        .data_in(spi_slave_data_in),
+        .data_out(spi_slave_data_out),
+        .data_out_ready(spi_slave_data_out_ready),
+        .read_data_in(spi_slave_read_data_in),
+        .data_error(spi_slave_data_error)
     );
 
     // Final Assignments
-    assign ja  = {spi_data_out_ready, csn, sclk, miso, mosi, spi_read_data_in, uart_data_out_ready, uart_txd_in};
-    assign jb  = {spi_data_error, uart_data_error};
-    assign led = {spi_data_out};
+    assign ja = {csn, sclk, miso, mosi, btnc, uart_data_error, uart_data_out_ready, uart_txd_in};
+    assign jb = {
+        spi_slave_data_error,
+        spi_slave_read_data_in,
+        spi_slave_data_out_ready,
+        spi_master_data_error,
+        spi_master_read_data_in,
+        spi_master_data_out_ready
+    };
+    assign led = {spi_slave_data_out, spi_master_data_out};
 endmodule
