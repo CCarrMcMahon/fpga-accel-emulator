@@ -140,5 +140,5 @@ module fpga_accel_emulator (
         spi_master_data_in_stored,
         spi_master_data_out_ready
     };
-    assign led = {spi_master_data_out_reg, spi_slave_data_out_reg};
+    assign led = {spi_slave_data_out_reg, spi_master_data_out_reg};
 endmodule
