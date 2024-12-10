@@ -19,7 +19,7 @@
  *
  * The module uses a state machine to manage the transmission process, which includes the following states:
  * - IDLE: Waiting for the start signal.
- * - LOAD_DATA: Loading the input data into the shift register.
+ * - STORE_DATA: Storing the input data into the shift register.
  * - START_BIT: Sending the start bit (logic 0).
  * - DATA_BITS: Transmitting the 8 data bits, starting with the least significant bit (LSB).
  * - STOP_BITS: Sending the stop bit (logic 1) and returning to the IDLE state.
@@ -42,7 +42,7 @@ module uart_transmitter #(
     // States
     typedef enum logic [2:0] {
         IDLE,
-        LOAD_DATA,
+        STORE_DATA,
         START_BIT,
         DATA_BITS,
         STOP_BITS
@@ -91,10 +91,10 @@ module uart_transmitter #(
         case (current_state)
             IDLE: begin
                 if (synced_start) begin
-                    next_state = LOAD_DATA;
+                    next_state = STORE_DATA;
                 end
             end
-            LOAD_DATA: begin
+            STORE_DATA: begin
                 next_state = START_BIT;
             end
             START_BIT: begin
@@ -134,7 +134,7 @@ module uart_transmitter #(
                     data_counter <= 0;
                     shift_reg <= 0;
                 end
-                LOAD_DATA: begin
+                STORE_DATA: begin
                     // Store data in the shift register to avoid it changing
                     shift_reg <= data_in;
 
