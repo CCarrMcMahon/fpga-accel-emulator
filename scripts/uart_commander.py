@@ -1,5 +1,6 @@
 import argparse
 import logging
+import time
 
 import serial
 import serial.tools.list_ports
@@ -9,8 +10,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 def str_to_int(string: str) -> int:
-    """
-    Convert a string to an integer. Supports decimal, hexadecimal (0x), and binary (0b) formats.
+    """Convert a string to an integer. Supports decimal, hexadecimal (0x), and binary (0b) formats.
 
     Args:
         string (str): The string to convert.
@@ -45,8 +45,7 @@ def str_to_int(string: str) -> int:
 
 
 def detect_com_port() -> str:
-    """
-    Detect available COM ports and select the first one found.
+    """Detect available COM ports and select the first one found.
 
     Returns:
         str: The selected COM port, or None if no ports are detected.
@@ -65,21 +64,37 @@ def detect_com_port() -> str:
     return selected_port
 
 
-def loop_send_uart_input(com_port: str, baudrate: int = 9600) -> None:
+def calculate_time_per_byte(baudrate, num_bits_per_frame=10):
+    """Calculate the time between each byte in a UART transmission.
+
+    Args:
+        baudrate (int): The baud rate in bits per second (bps).
+        num_bits_per_frame (int, optional): The number of bits per UART frame. Defaults to 10.
+
+    Returns:
+        float: The time between each byte in seconds.
     """
-    Continuously read input from the user, convert it to an integer, and send it over UART.
+    time_per_byte = num_bits_per_frame / baudrate
+    return time_per_byte
+
+
+def loop_send_uart_input(com_port: str, baudrate: int = 9600) -> None:
+    """Continuously read input from the user, convert it to an integer, and send it over UART.
 
     Args:
         com_port (str): The COM port to use for UART communication.
         baudrate (int, optional): The baud rate for UART communication. Defaults to 9600.
     """
     try:
-        ser = serial.Serial(com_port, baudrate, timeout=1)
+        ser = serial.Serial(com_port, baudrate)
     except serial.SerialException as e:
         logger.error("Failed to open serial port: %s", e)
         return
 
     try:
+        time_per_byte = calculate_time_per_byte(baudrate)
+        logger.info("Calculated time per byte for baud rate %d: %f", baudrate, time_per_byte)
+
         while True:
             data_str = input("Enter int, hex, or bits to send (or x to exit): ").strip().lower()
             if data_str == "x":
@@ -94,9 +109,15 @@ def loop_send_uart_input(com_port: str, baudrate: int = 9600) -> None:
             ser.write(data_bytes)
 
             # Check for a response from UART
-            response = ser.read(ser.in_waiting or 1)
+            response = b""
+            while True:
+                time.sleep((time_per_byte * data_byte_len) * 20)
+                if not ser.in_waiting:
+                    break
+                response += ser.read(ser.in_waiting)
+
             if response:
-                logger.info("Received data: %s", response.hex())
+                logger.info("Received data: 0x%s", response.hex())
     except KeyboardInterrupt:
         logger.info("Interrupted by user")
     finally:
