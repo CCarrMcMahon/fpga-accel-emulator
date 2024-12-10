@@ -1,3 +1,32 @@
+/**
+ * @module uart_transmitter
+ * @brief UART Transmitter Module
+ *
+ * This module implements a UART transmitter that sends 8-bit data over a serial line. The module operates at a
+ * configurable baud rate and clock frequency.
+ *
+ * @param ClkFreq  The frequency of the input clock in Hz (default: 100 MHz).
+ * @param BaudRate The desired baud rate for UART communication (default: 9600).
+ *
+ * @input clk       The system clock input.
+ * @input resetn    Active-low reset signal.
+ * @input start     Signal to initiate transmission.
+ * @input data_in   8-bit data input to be transmitted.
+ *
+ * @output data_in_ack Acknowledgment signal indicating that data_in has been loaded.
+ * @output busy        Signal indicating the transmitter is busy.
+ * @output tx          UART transmit data output.
+ *
+ * The module uses a state machine to manage the transmission process, which includes the following states:
+ * - IDLE: Waiting for the start signal.
+ * - LOAD_DATA: Loading the input data into the shift register.
+ * - START_BIT: Sending the start bit (logic 0).
+ * - DATA_BITS: Transmitting the 8 data bits, starting with the least significant bit (LSB).
+ * - STOP_BITS: Sending the stop bit (logic 1) and returning to the IDLE state.
+ *
+ * The module also includes internal logic for synchronizing the `start` signal and a pulse generator for generating the
+ * baud rate clock.
+ */
 module uart_transmitter #(
     parameter int ClkFreq  = 100_000_000,
     parameter int BaudRate = 9600
