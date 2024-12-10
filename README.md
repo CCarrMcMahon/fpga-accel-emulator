@@ -12,18 +12,19 @@ FPGA-Accel-Emulator is an FPGA-based project designed to emulate the functionali
 
 ### Description of Current Functionality
 
+-   **UART Transmitter Module**: Sends 8-bit data over a UART serial line. It synchronizes the `start` signal to the system clock and uses a state machine to manage the transmission process. This module handles the following states: IDLE, LOAD_DATA, START_BIT, DATA_BITS, and STOP_BITS. It generates the start bit, transmits the data bits starting with the least significant bit (LSB), and sends the stop bit according to the specified baud rate. The module provides acknowledgment (`data_in_ack`) and busy signals to indicate the status of the transmission.
 -   **UART Receiver Module**: Converts UART serial data from the RX line into an 8-bit register, providing ready and error signals. It synchronizes the `rx` and `data_out_ack` signals to the system clock and uses a state machine to manage the reception process. This module detects start, data, and stop bits according to the specified baud rate.
 -   **SPI Master Module**: Facilitates communication with SPI slave devices. It synchronizes the `data_out_ack` and `start_tx` signals to the system clock and uses a state machine to manage the SPI transmission process. This module generates the SPI clock signal according to the specified frequency and handles the SPI protocol, including chip select, data shifting, and clocking.
 -   **SPI Slave Module**: Receives data from the SPI master and transmits data back to the SPI master. It synchronizes the `data_out_ack` signal to the system clock and uses a state machine to manage the SPI reception process. This module handles the SPI protocol, including chip select, data shifting, and clocking.
 -   **Clock Generator Module**: Generates an output clock with a specified frequency and phase shift from an input clock. It is configurable through parameters for input clock frequency, output clock frequency, and phase shift.
 -   **Pulse Generator Module**: Generates an output pulse with a specified frequency and phase shift from an input clock. It is configurable through parameters for input clock frequency, output pulse frequency, and phase shift.
 -   **Synchronizer Module**: Synchronizes an asynchronous input signal to the clock domain of the system clock. It uses a two-stage flip-flop to mitigate metastability issues and provide a stable synchronized output.
--   **Top-Level Module (fpga_accel_emulator)**: Integrates UART and SPI communication interfaces and provides control and status signals for external connections. It manages data transfer between the SPI master and SPI slave and updates status signals for external monitoring.
+-   **Top-Level Module (fpga_accel_emulator)**: The top level module of this project currently used for debugging modules and functionality.
 
 ### Status of Main Functionality
 
 -   [x] Create a UART receiver module to collect data over UART and store it in a register.
--   [ ] Create a UART transmitter module to collect data from a register and send it it over UART.
+-   [x] Create a UART transmitter module to collect data from a register and send it it over UART.
 -   [x] Create a SPI master module to send data to and receive data from a SPI slave module.
 -   [x] Create a SPI slave module so SPI masters can properly transmit data.
 -   [ ] Implement a UART to SPI converter to allow for easier integration between the PC and future modules.
