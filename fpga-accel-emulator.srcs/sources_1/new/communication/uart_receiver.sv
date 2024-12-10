@@ -18,6 +18,7 @@
  * @output data_error     Indicates an error in the received data (e.g., framing error).
  *
  * The module uses a state machine to manage the reception process, which includes the following states:
+ * - RESET: Waiting for the `rx` signal to be high after a reset condition.
  * - IDLE: Waiting for the start bit.
  * - START_BIT: Validating the start bit.
  * - DATA_BITS: Receiving the data bits.
