@@ -43,6 +43,7 @@ module uart_receiver #(
 );
     // States
     typedef enum logic [2:0] {
+        RESET,
         IDLE,
         START_BIT,
         DATA_BITS,
@@ -92,7 +93,7 @@ module uart_receiver #(
     // State Machine Transitions
     always_ff @(posedge clk or negedge resetn) begin
         if (!resetn) begin
-            current_state <= IDLE;
+            current_state <= RESET;
         end else begin
             current_state <= next_state;
         end
@@ -102,6 +103,12 @@ module uart_receiver #(
     always_comb begin
         next_state = current_state;
         case (current_state)
+            RESET: begin
+                // Wait for rx to be set high
+                if (synced_rx == 1'b1) begin
+                    next_state = IDLE;
+                end
+            end
             IDLE: begin
                 // Start bit detected
                 if (synced_rx == 1'b0) begin
@@ -155,49 +162,48 @@ module uart_receiver #(
     end
 
     // UART Receiver Logic
-    always_ff @(posedge clk or negedge resetn) begin
-        if (!resetn) begin
-            data_out <= 0;
-            data_out_ready <= 0;
-            error <= 0;
-            clear_baud_gen <= 1;
-            data_counter <= 0;
-            shift_reg <= 0;
-        end else begin
-            case (current_state)
-                IDLE: begin
-                    clear_baud_gen <= 1;
-                    data_counter <= 0;
-                    shift_reg <= 0;
+    always_ff @(posedge clk) begin
+        case (current_state)
+            RESET: begin
+                data_out <= 0;
+                data_out_ready <= 0;
+                error <= 0;
+                clear_baud_gen <= 1;
+                data_counter <= 0;
+                shift_reg <= 0;
+            end
+            IDLE: begin
+                clear_baud_gen <= 1;
+                data_counter <= 0;
+                shift_reg <= 0;
+            end
+            START_BIT: begin
+                // Start the baud pulse generator
+                clear_baud_gen <= 0;
+            end
+            DATA_BITS: begin
+                // Shift all data bits into shift register
+                if (baud_pulse) begin
+                    shift_reg <= {synced_rx, shift_reg[7:1]};  // Use right shift to first bit becomes LSB
+                    data_counter <= data_counter + 1;
                 end
-                START_BIT: begin
-                    // Start the baud pulse generator
-                    clear_baud_gen <= 0;
-                end
-                DATA_BITS: begin
-                    // Shift all data bits into shift register
-                    if (baud_pulse) begin
-                        shift_reg <= {synced_rx, shift_reg[7:1]};  // Use right shift to first bit becomes LSB
-                        data_counter <= data_counter + 1;
-                    end
-                end
-                STOP_BITS: begin
-                    data_counter <= 0;
-                end
-                OUTPUT_DATA: begin
-                    data_out <= shift_reg;
-                    data_out_ready <= 1;
-                end
-                DATA_OUT_ACKED: begin
-                    data_out <= 0;
-                    data_out_ready <= 0;
-                    error <= 0;
-                end
-                ERROR: begin
-                    error <= 1;
-                end
-                default: error <= 1;
-            endcase
-        end
+            end
+            STOP_BITS: begin
+                data_counter <= 0;
+            end
+            OUTPUT_DATA: begin
+                data_out <= shift_reg;
+                data_out_ready <= 1;
+            end
+            DATA_OUT_ACKED: begin
+                data_out <= 0;
+                data_out_ready <= 0;
+                error <= 0;
+            end
+            ERROR: begin
+                error <= 1;
+            end
+            default: error <= 1;
+        endcase
     end
 endmodule

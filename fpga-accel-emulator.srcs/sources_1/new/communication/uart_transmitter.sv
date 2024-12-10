@@ -41,6 +41,7 @@ module uart_transmitter #(
 );
     // States
     typedef enum logic [2:0] {
+        RESET,
         IDLE,
         STORE_DATA,
         START_BIT,
@@ -79,7 +80,7 @@ module uart_transmitter #(
     // State Machine Transitions
     always_ff @(posedge clk or negedge resetn) begin
         if (!resetn) begin
-            current_state <= IDLE;
+            current_state <= RESET;
         end else begin
             current_state <= next_state;
         end
@@ -89,6 +90,9 @@ module uart_transmitter #(
     always_comb begin
         next_state = current_state;
         case (current_state)
+            RESET: begin
+                next_state = IDLE;
+            end
             IDLE: begin
                 if (synced_start) begin
                     next_state = STORE_DATA;
@@ -115,53 +119,52 @@ module uart_transmitter #(
     end
 
     // UART Transmitter Logic
-    always_ff @(posedge clk or negedge resetn) begin
-        if (!resetn) begin
-            data_in_ack <= 0;
-            busy <= 0;
-            tx <= 1;
-            clear_baud_gen <= 1;
-            data_counter <= 0;
-            shift_reg <= 0;
-        end else begin
-            case (current_state)
-                IDLE: begin
-                    // Set default state of signals
-                    data_in_ack <= 0;
-                    busy <= 0;
-                    tx <= 1;
-                    clear_baud_gen <= 1;
-                    data_counter <= 0;
-                    shift_reg <= 0;
-                end
-                STORE_DATA: begin
-                    // Store data in the shift register to avoid it changing
-                    shift_reg <= data_in;
+    always_ff @(posedge clk) begin
+        case (current_state)
+            RESET: begin
+                data_in_ack <= 0;
+                busy <= 0;
+                tx <= 1;
+                clear_baud_gen <= 1;
+                data_counter <= 0;
+                shift_reg <= 0;
+            end
+            IDLE: begin
+                // Set default state of signals
+                data_in_ack <= 0;
+                busy <= 0;
+                tx <= 1;
+                clear_baud_gen <= 1;
+                data_counter <= 0;
+                shift_reg <= 0;
+            end
+            STORE_DATA: begin
+                // Store data in the shift register to avoid it changing
+                shift_reg <= data_in;
 
-                    // Indicate status and start the baud clock
-                    data_in_ack <= 1;
-                    busy <= 1;
-                    clear_baud_gen <= 0;
+                // Indicate status and start the baud clock
+                data_in_ack <= 1;
+                busy <= 1;
+                clear_baud_gen <= 0;
+            end
+            START_BIT: begin
+                // Clear data_in_ack since we have stored the data
+                data_in_ack <= 0;
+                if (baud_pulse) begin
+                    tx <= 0;  // Start bit
                 end
-                START_BIT: begin
-                    // Clear data_in_ack since we have stored the data
-                    data_in_ack <= 0;
-                    if (baud_pulse) begin
-                        tx <= 0;  // Start bit
-                    end
+            end
+            DATA_BITS: begin
+                if (baud_pulse && data_counter < 8) begin
+                    tx <= shift_reg[0];  // Transmit LSB
+                    shift_reg <= {1'b0, shift_reg[7:1]};  // Shift out LSB (right shift)
+                    data_counter <= data_counter + 1;
                 end
-                DATA_BITS: begin
-                    if (baud_pulse && data_counter < 8) begin
-                        tx <= shift_reg[0];  // Transmit LSB
-                        shift_reg <= {1'b0, shift_reg[7:1]};  // Shift out LSB (right shift)
-                        data_counter <= data_counter + 1;
-                    end
-                end
-                STOP_BITS: begin
-                    tx <= 1;  // Stop bit
-                end
-                default: tx <= 1;
-            endcase
-        end
+            end
+            STOP_BITS: begin
+                tx <= 1;  // Stop bit
+            end
+            default: tx <= 1;
+        endcase
     end
 endmodule
