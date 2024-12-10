@@ -105,7 +105,7 @@ def loop_send_uart_input(com_port: str, baudrate: int = 9600) -> None:
                 continue
 
             data_byte_len = (data_int.bit_length() + 7) // 8
-            data_bytes = data_int.to_bytes(data_byte_len or 1, byteorder="little")
+            data_bytes = data_int.to_bytes(data_byte_len or 1)
             ser.write(data_bytes)
 
             # Check for a response from UART

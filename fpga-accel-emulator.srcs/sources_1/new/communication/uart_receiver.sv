@@ -58,7 +58,7 @@ module uart_receiver #(
     // Internal signals
     logic clear_baud_gen;
     logic baud_pulse;
-    logic [3:0] data_counter;
+    logic [2:0] data_counter;
     logic [7:0] shift_reg;
     logic synced_rx;
     logic synced_data_out_ack;
