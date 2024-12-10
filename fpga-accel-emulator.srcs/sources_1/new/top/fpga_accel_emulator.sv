@@ -15,11 +15,13 @@ module fpga_accel_emulator (
     input logic cpu_resetn,
     input logic uart_txd_in,
     output logic uart_rxd_out,
-    output logic [0:0] led
+    output logic [1:0] led,
+    output logic [1:0] ja
 );
     // UART signals
-    logic [7:0] uart_data_out;
-    logic uart_data_out_ready;
+    logic [7:0] rx_data_out;
+    logic tx_to_rx_data_ack;
+    logic rx_data_out_ready;
     logic uart_data_error;
     logic uart_busy;
 
@@ -30,10 +32,10 @@ module fpga_accel_emulator (
     ) uart_receiver_inst_1 (
         .clk(clk100mhz),
         .resetn(cpu_resetn),
-        .data_out_ack(uart_busy),
+        .data_out_ack(tx_to_rx_data_ack),
         .rx(uart_txd_in),
-        .data_out(uart_data_out),
-        .data_out_ready(uart_data_out_ready),
+        .data_out(rx_data_out),
+        .data_out_ready(rx_data_out_ready),
         .data_error(uart_data_error)
     );
 
@@ -43,11 +45,13 @@ module fpga_accel_emulator (
     ) uart_transmitter_inst_1 (
         .clk(clk100mhz),
         .resetn(cpu_resetn),
-        .start(uart_data_out_ready),
-        .data_in(uart_data_out),
-        .tx(uart_rxd_out),
-        .busy(uart_busy)
+        .start(rx_data_out_ready),
+        .data_in(rx_data_out),
+        .data_in_ack(tx_to_rx_data_ack),
+        .busy(uart_busy),
+        .tx(uart_rxd_out)
     );
 
-    assign led[0] = uart_data_error;
+    assign led = {uart_busy, uart_data_error};
+    assign ja  = {uart_rxd_out, uart_txd_in};
 endmodule
