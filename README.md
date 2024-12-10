@@ -2,7 +2,7 @@
 
 ## Summary
 
-FPGA-Accel-Emulator is an FPGA-based project designed to emulate the functionality of the ADXL362 accelerometer. This project aims to facilitate testing and development by allowing direct control over the accelerometer's FIFO registers via an SPI interface, without the need for actual hardware. The emulator supports communication with an external MCU and a PC, providing a flexible and controllable environment for algorithm testing.
+FPGA-Accel-Emulator is an FPGA-based project designed to emulate the functionality of the ADXL362 accelerometer. This project aims to facilitate testing and development by allowing direct control over the accelerometer's FIFO registers via a SPI interface, without the need for actual hardware. The emulator supports communication with an external MCU and a PC, providing a flexible and controllable environment for testing.
 
 ## Status
 
