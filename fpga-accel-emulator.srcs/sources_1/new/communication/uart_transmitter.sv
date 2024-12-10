@@ -6,6 +6,7 @@ module uart_transmitter #(
     input logic resetn,
     input logic start,
     input logic [7:0] data_in,
+    output logic data_in_ack,
     output logic tx,
     output logic busy
 );
@@ -78,9 +79,7 @@ module uart_transmitter #(
                 end
             end
             STOP_BITS: begin
-                if (baud_pulse) begin
-                    next_state = IDLE;
-                end
+                next_state = IDLE;
             end
             default: next_state = IDLE;
         endcase
@@ -89,6 +88,7 @@ module uart_transmitter #(
     // UART Transmitter Logic
     always_ff @(posedge clk or negedge resetn) begin
         if (!resetn) begin
+            data_in_ack <= 0;
             tx <= 1;
             busy <= 0;
             clear_baud_gen <= 1;
@@ -98,6 +98,7 @@ module uart_transmitter #(
             case (current_state)
                 IDLE: begin
                     // Set default state of signals
+                    data_in_ack <= 0;
                     tx <= 1;
                     busy <= 0;
                     clear_baud_gen <= 1;
@@ -106,11 +107,16 @@ module uart_transmitter #(
                 end
                 LOAD_DATA: begin
                     // Store data in the shift register to avoid it changing
+                    shift_reg <= data_in;
+
+                    // Indicate status and start the baud clock
+                    data_in_ack <= 1;
                     busy <= 1;
                     clear_baud_gen <= 0;
-                    shift_reg <= data_in;
                 end
                 START_BIT: begin
+                    // Clear data_in_ack since we have stored the data
+                    data_in_ack <= 0;
                     if (baud_pulse) begin
                         tx <= 0;  // Start bit
                     end
@@ -123,9 +129,7 @@ module uart_transmitter #(
                     end
                 end
                 STOP_BITS: begin
-                    if (baud_pulse) begin
-                        tx <= 1;  // Stop bit
-                    end
+                    tx <= 1;  // Stop bit
                 end
                 default: tx <= 1;
             endcase
