@@ -2,27 +2,27 @@
  * @module uart_transmitter
  * @brief UART Transmitter Module
  *
- * This module implements a UART transmitter that sends 8-bit data over a serial line. The module operates at a
- * configurable baud rate and clock frequency.
+ * This module implements a UART transmitter that sends serial data through the `tx` output. The module operates at a configurable baud rate and clock frequency.
  *
  * @param ClkFreq  The frequency of the input clock in Hz (default: 100 MHz).
  * @param BaudRate The desired baud rate for UART communication (default: 9600).
  *
  * @input clk       The system clock input.
  * @input resetn    Active-low reset signal.
- * @input start     Signal to initiate transmission.
- * @input data_in   8-bit data input to be transmitted.
+ * @input start     Signal to start the transmission.
+ * @input data_in   The byte of data to be transmitted.
  *
- * @output data_in_ack Acknowledgment signal indicating that data_in has been loaded.
- * @output busy        Signal indicating the transmitter is busy.
+ * @output data_in_ack Acknowledgment signal indicating that the data has been stored.
+ * @output busy        Indicates that the transmitter is busy.
  * @output tx          UART transmit data output.
  *
  * The module uses a state machine to manage the transmission process, which includes the following states:
+ * - RESET: Initial state, waiting for the `rx` signal to be high.
  * - IDLE: Waiting for the start signal.
- * - LOAD_DATA: Loading the input data into the shift register.
- * - START_BIT: Sending the start bit (logic 0).
- * - DATA_BITS: Transmitting the 8 data bits, starting with the least significant bit (LSB).
- * - STOP_BITS: Sending the stop bit (logic 1) and returning to the IDLE state.
+ * - STORE_DATA: Storing the data to be transmitted.
+ * - START_BIT: Sending the start bit.
+ * - DATA_BITS: Transmitting the data bits.
+ * - STOP_BITS: Sending the stop bit.
  *
  * The module also includes internal logic for synchronizing the `start` signal and a pulse generator for generating the
  * baud rate clock.
@@ -41,8 +41,9 @@ module uart_transmitter #(
 );
     // States
     typedef enum logic [2:0] {
+        RESET,
         IDLE,
-        LOAD_DATA,
+        STORE_DATA,
         START_BIT,
         DATA_BITS,
         STOP_BITS
@@ -79,7 +80,7 @@ module uart_transmitter #(
     // State Machine Transitions
     always_ff @(posedge clk or negedge resetn) begin
         if (!resetn) begin
-            current_state <= IDLE;
+            current_state <= RESET;
         end else begin
             current_state <= next_state;
         end
@@ -89,12 +90,15 @@ module uart_transmitter #(
     always_comb begin
         next_state = current_state;
         case (current_state)
+            RESET: begin
+                next_state = IDLE;
+            end
             IDLE: begin
                 if (synced_start) begin
-                    next_state = LOAD_DATA;
+                    next_state = STORE_DATA;
                 end
             end
-            LOAD_DATA: begin
+            STORE_DATA: begin
                 next_state = START_BIT;
             end
             START_BIT: begin
@@ -115,53 +119,52 @@ module uart_transmitter #(
     end
 
     // UART Transmitter Logic
-    always_ff @(posedge clk or negedge resetn) begin
-        if (!resetn) begin
-            data_in_ack <= 0;
-            busy <= 0;
-            tx <= 1;
-            clear_baud_gen <= 1;
-            data_counter <= 0;
-            shift_reg <= 0;
-        end else begin
-            case (current_state)
-                IDLE: begin
-                    // Set default state of signals
-                    data_in_ack <= 0;
-                    busy <= 0;
-                    tx <= 1;
-                    clear_baud_gen <= 1;
-                    data_counter <= 0;
-                    shift_reg <= 0;
-                end
-                LOAD_DATA: begin
-                    // Store data in the shift register to avoid it changing
-                    shift_reg <= data_in;
+    always_ff @(posedge clk) begin
+        case (current_state)
+            RESET: begin
+                data_in_ack <= 0;
+                busy <= 0;
+                tx <= 1;
+                clear_baud_gen <= 1;
+                data_counter <= 0;
+                shift_reg <= 0;
+            end
+            IDLE: begin
+                // Set default state of signals
+                data_in_ack <= 0;
+                busy <= 0;
+                tx <= 1;
+                clear_baud_gen <= 1;
+                data_counter <= 0;
+                shift_reg <= 0;
+            end
+            STORE_DATA: begin
+                // Store data in the shift register to avoid it changing
+                shift_reg <= data_in;
 
-                    // Indicate status and start the baud clock
-                    data_in_ack <= 1;
-                    busy <= 1;
-                    clear_baud_gen <= 0;
+                // Indicate status and start the baud clock
+                data_in_ack <= 1;
+                busy <= 1;
+                clear_baud_gen <= 0;
+            end
+            START_BIT: begin
+                // Clear data_in_ack since we have stored the data
+                data_in_ack <= 0;
+                if (baud_pulse) begin
+                    tx <= 0;  // Start bit
                 end
-                START_BIT: begin
-                    // Clear data_in_ack since we have stored the data
-                    data_in_ack <= 0;
-                    if (baud_pulse) begin
-                        tx <= 0;  // Start bit
-                    end
+            end
+            DATA_BITS: begin
+                if (baud_pulse && data_counter < 8) begin
+                    tx <= shift_reg[0];  // Transmit LSB
+                    shift_reg <= {1'b0, shift_reg[7:1]};  // Shift out LSB (right shift)
+                    data_counter <= data_counter + 1;
                 end
-                DATA_BITS: begin
-                    if (baud_pulse && data_counter < 8) begin
-                        tx <= shift_reg[0];  // Transmit LSB
-                        shift_reg <= {1'b0, shift_reg[7:1]};  // Shift out LSB (right shift)
-                        data_counter <= data_counter + 1;
-                    end
-                end
-                STOP_BITS: begin
-                    tx <= 1;  // Stop bit
-                end
-                default: tx <= 1;
-            endcase
-        end
+            end
+            STOP_BITS: begin
+                tx <= 1;  // Stop bit
+            end
+            default: tx <= 1;
+        endcase
     end
 endmodule
