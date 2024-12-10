@@ -74,7 +74,7 @@ def loop_send_uart_input(com_port: str, baudrate: int = 9600) -> None:
         baudrate (int, optional): The baud rate for UART communication. Defaults to 9600.
     """
     try:
-        ser = serial.Serial(com_port, baudrate)
+        ser = serial.Serial(com_port, baudrate, timeout=1)
     except serial.SerialException as e:
         logger.error("Failed to open serial port: %s", e)
         return
@@ -92,6 +92,11 @@ def loop_send_uart_input(com_port: str, baudrate: int = 9600) -> None:
             data_byte_len = (data_int.bit_length() + 7) // 8
             data_bytes = data_int.to_bytes(data_byte_len or 1, byteorder="little")
             ser.write(data_bytes)
+
+            # Check for a response from UART
+            response = ser.read(ser.in_waiting or 1)
+            if response:
+                logger.info("Received data: %s", response.hex())
     except KeyboardInterrupt:
         logger.info("Interrupted by user")
     finally:
