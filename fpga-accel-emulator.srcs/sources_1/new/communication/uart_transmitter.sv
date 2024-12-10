@@ -7,8 +7,8 @@ module uart_transmitter #(
     input logic start,
     input logic [7:0] data_in,
     output logic data_in_ack,
-    output logic tx,
-    output logic busy
+    output logic busy,
+    output logic tx
 );
     // States
     typedef enum logic [2:0] {
@@ -89,8 +89,8 @@ module uart_transmitter #(
     always_ff @(posedge clk or negedge resetn) begin
         if (!resetn) begin
             data_in_ack <= 0;
-            tx <= 1;
             busy <= 0;
+            tx <= 1;
             clear_baud_gen <= 1;
             data_counter <= 0;
             shift_reg <= 0;
@@ -99,8 +99,8 @@ module uart_transmitter #(
                 IDLE: begin
                     // Set default state of signals
                     data_in_ack <= 0;
-                    tx <= 1;
                     busy <= 0;
+                    tx <= 1;
                     clear_baud_gen <= 1;
                     data_counter <= 0;
                     shift_reg <= 0;
