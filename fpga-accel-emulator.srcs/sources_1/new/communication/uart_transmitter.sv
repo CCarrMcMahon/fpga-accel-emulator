@@ -61,7 +61,7 @@ module uart_transmitter #(
     pulse_generator #(
         .ClkInFreq(ClkFreq),
         .PulseOutFreq(BaudRate),
-        .PhaseShift(0.5)
+        .PhaseShift(0.0)
     ) baud_gen (
         .clk_in(clk),
         .resetn(resetn),
@@ -102,9 +102,7 @@ module uart_transmitter #(
                 next_state = START_BIT;
             end
             START_BIT: begin
-                if (baud_pulse) begin
-                    next_state = DATA_BITS;
-                end
+                next_state = DATA_BITS;
             end
             DATA_BITS: begin
                 if (baud_pulse && data_counter == 8) begin
@@ -150,12 +148,10 @@ module uart_transmitter #(
             START_BIT: begin
                 // Clear data_in_ack since we have stored the data
                 data_in_ack <= 0;
-                if (baud_pulse) begin
-                    tx <= 0;  // Start bit
-                end
+                tx <= 0;  // Start bit
             end
             DATA_BITS: begin
-                if (baud_pulse && data_counter < 8) begin
+                if (baud_pulse) begin
                     tx <= shift_reg[0];  // Transmit LSB
                     shift_reg <= {1'b0, shift_reg[7:1]};  // Shift out LSB (right shift)
                     data_counter <= data_counter + 1;
