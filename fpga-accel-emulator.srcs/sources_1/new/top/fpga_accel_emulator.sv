@@ -15,14 +15,26 @@ module fpga_accel_emulator (
     input logic cpu_resetn,
     input logic uart_txd_in,
     output logic uart_rxd_out,
-    output logic [5:0] ja
+    output logic [7:0] ja,
+    output logic [4:0] jb
 );
-    // UART signals
+    // UART Signals
     logic [7:0] rx_data_out;
-    logic tx_to_rx_data_ack;
+    logic tx_to_spi_data_ack;
     logic rx_valid;
     logic rx_error;
     logic tx_busy;
+
+    // SPI Signals
+    logic mosi;
+    logic miso = 0;
+    logic sclk;
+    logic csn;
+    logic [7:0] spi_data_out;
+    logic spi_to_rx_data_ack;
+    logic spi_valid;
+    logic spi_error;
+
 
     // Instantiate the uart_receiver module
     uart_receiver #(
@@ -32,10 +44,29 @@ module fpga_accel_emulator (
         .clk(clk100mhz),
         .resetn(cpu_resetn),
         .rx(uart_txd_in),
-        .data_out_ack(tx_to_rx_data_ack),
+        .data_out_ack(spi_to_rx_data_ack),
         .data_out(rx_data_out),
         .valid(rx_valid),
         .error(rx_error)
+    );
+
+    spi_master #(
+        .ClkFreq (100_000_000),
+        .SclkFreq(9600)
+    ) spi_master_inst_1 (
+        .clk(clk100mhz),
+        .resetn(cpu_resetn),
+        .start(rx_valid),
+        .data_in(rx_data_out),
+        .data_out_ack(tx_to_spi_data_ack),
+        .miso(miso),
+        .mosi(mosi),
+        .sclk(sclk),
+        .csn(csn),
+        .data_out(spi_data_out),
+        .data_in_ack(spi_to_rx_data_ack),
+        .valid(spi_valid),
+        .error(spi_error)
     );
 
     uart_transmitter #(
@@ -44,12 +75,13 @@ module fpga_accel_emulator (
     ) uart_transmitter_inst_1 (
         .clk(clk100mhz),
         .resetn(cpu_resetn),
-        .start(rx_valid),
-        .data_in(rx_data_out),
-        .data_in_ack(tx_to_rx_data_ack),
-        .busy(tx_busy),
-        .tx(uart_rxd_out)
+        .start(spi_valid),
+        .data_in(spi_data_out),
+        .tx(uart_rxd_out),
+        .data_in_ack(tx_to_spi_data_ack),
+        .busy(tx_busy)
     );
 
-    assign ja = {uart_rxd_out, tx_busy, tx_to_rx_data_ack, rx_valid, rx_error, uart_txd_in};
+    assign ja = {csn, sclk, miso, mosi, spi_to_rx_data_ack, rx_valid, rx_error, uart_txd_in};
+    assign jb = {uart_rxd_out, tx_busy, tx_to_spi_data_ack, spi_valid, spi_error};
 endmodule
