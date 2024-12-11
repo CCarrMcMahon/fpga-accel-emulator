@@ -16,7 +16,7 @@
  * @output clk_out The generated output clock signal.
  *
  * The module calculates the necessary divider value and counter bits based on the input and output clock frequencies.
- * It also ensures that the phase shift is within a valid range [0.0, 1.0]. The internal counter and logic generate the
+ * It also ensures that the phase shift is within a valid range [0.0, 1.0). The internal counter and logic generate the
  * output clock with the specified frequency and phase shift.
  */
 module clock_generator #(
@@ -33,11 +33,11 @@ module clock_generator #(
     localparam int Divider = ClkInFreq / (ClkOutFreq * 2);
     localparam int CounterBits = $clog2(Divider);
 
-    // Ensure the phase shift is within a valid range [0.0, 1.0]
-    localparam real ValidPhaseShift = (PhaseShift < 0.0) ? 0.0 : (PhaseShift > 1.0) ? 1.0 : PhaseShift;
+    // Ensure the phase shift is within a valid range [0.0, 1.0)
+    localparam real ValidPhaseShift = (0.0 < PhaseShift && PhaseShift < 1.0) ? PhaseShift : 0.0;
 
     // Calculate the offset for the phase shift
-    localparam int ShiftOffset = Divider - $rtoi(Divider * ValidPhaseShift);
+    localparam int ShiftOffset = $rtoi(Divider * ValidPhaseShift);
 
     // Internal signals
     logic [CounterBits-1:0] counter;

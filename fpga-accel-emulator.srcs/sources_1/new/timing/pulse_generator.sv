@@ -16,7 +16,7 @@
  * @output pulse_out The generated output pulse signal.
  *
  * The module calculates the necessary divider value and counter bits based on the input and output pulse frequencies.
- * It also ensures that the phase shift is within a valid range [0.0, 1.0]. The internal counter and logic generate the
+ * It also ensures that the phase shift is within a valid range [0.0, 1.0). The internal counter and logic generate the
  * output pulse with the specified frequency and phase shift.
  */
 module pulse_generator #(
@@ -33,11 +33,11 @@ module pulse_generator #(
     localparam int Divider = ClkInFreq / PulseOutFreq;
     localparam int CounterBits = $clog2(Divider);
 
-    // Ensure the phase shift is within a valid range [0.0, 1.0]
-    localparam real ValidPhaseShift = (PhaseShift < 0.0) ? 0.0 : (PhaseShift > 1.0) ? 1.0 : PhaseShift;
+    // Ensure the phase shift is within a valid range [0.0, 1.0)
+    localparam real ValidPhaseShift = (0.0 < PhaseShift && PhaseShift < 1.0) ? PhaseShift : 0.0;
 
     // Calculate the offset for the phase shift
-    localparam int ShiftOffset = Divider - $rtoi(Divider * ValidPhaseShift);
+    localparam int ShiftOffset = $rtoi(Divider * ValidPhaseShift);
 
     // Internal signals
     logic [CounterBits-1:0] counter;
