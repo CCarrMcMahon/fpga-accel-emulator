@@ -20,7 +20,7 @@ module fpga_accel_emulator (
     // UART signals
     logic [7:0] rx_data_out;
     logic tx_to_rx_data_ack;
-    logic rx_data_out_ready;
+    logic rx_valid;
     logic rx_error;
     logic tx_busy;
 
@@ -34,7 +34,7 @@ module fpga_accel_emulator (
         .rx(uart_txd_in),
         .data_out_ack(tx_to_rx_data_ack),
         .data_out(rx_data_out),
-        .data_out_ready(rx_data_out_ready),
+        .valid(rx_valid),
         .error(rx_error)
     );
 
@@ -44,12 +44,12 @@ module fpga_accel_emulator (
     ) uart_transmitter_inst_1 (
         .clk(clk100mhz),
         .resetn(cpu_resetn),
-        .start(rx_data_out_ready),
+        .start(rx_valid),
         .data_in(rx_data_out),
         .data_in_ack(tx_to_rx_data_ack),
         .busy(tx_busy),
         .tx(uart_rxd_out)
     );
 
-    assign ja = {uart_rxd_out, tx_busy, tx_to_rx_data_ack, rx_data_out_ready, rx_error, uart_txd_in};
+    assign ja = {uart_rxd_out, tx_busy, tx_to_rx_data_ack, rx_valid, rx_error, uart_txd_in};
 endmodule
