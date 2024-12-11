@@ -34,11 +34,18 @@ module uart_receiver #(
     parameter int ClkFreq  = 100_000_000,
     parameter int BaudRate = 9600
 ) (
+    // Control Signals
     input logic clk,
     input logic resetn,
+
+    // Data Input Signals
     input logic rx,
     input logic data_out_ack,
+
+    // Data Output Signals
     output logic [7:0] data_out,
+
+    // Status Signals
     output logic valid,
     output logic error
 );
@@ -53,15 +60,15 @@ module uart_receiver #(
         DATA_OUT_ACKED,
         ERROR
     } state_t;
-    state_t current_state, next_state;
+    state_t state, next_state;
 
     // Internal signals
     logic clear_baud_gen;
     logic baud_pulse;
     logic [2:0] data_counter;
     logic [7:0] shift_reg;
-    logic synced_rx;
-    logic synced_data_out_ack;
+    logic rx_synced;
+    logic data_out_ack_synced;
 
     // Instantiate a pulse generator for the baud rate clock
     pulse_generator #(
@@ -80,7 +87,7 @@ module uart_receiver #(
         .clk(clk),
         .resetn(resetn),
         .async_signal(rx),
-        .sync_signal(synced_rx)
+        .sync_signal(rx_synced)
     );
 
     // Instantiate a synchronizer for data_out_ack
@@ -88,45 +95,45 @@ module uart_receiver #(
         .clk(clk),
         .resetn(resetn),
         .async_signal(data_out_ack),
-        .sync_signal(synced_data_out_ack)
+        .sync_signal(data_out_ack_synced)
     );
 
     // State Machine Transitions
     always_ff @(posedge clk or negedge resetn) begin
         if (!resetn) begin
-            current_state <= RESET;
+            state <= RESET;
         end else begin
-            current_state <= next_state;
+            state <= next_state;
         end
     end
 
     // State Machine Logic
     always_comb begin
-        next_state = current_state;
-        case (current_state)
+        next_state = state;
+        case (state)
             RESET: begin
                 // Wait for rx to be set high
-                if (synced_rx == 1'b1) begin
+                if (rx_synced) begin
                     next_state = IDLE;
                 end
             end
             IDLE: begin
                 // Start bit detected
-                if (!synced_rx) begin
+                if (!rx_synced) begin
                     // Previous data has been processed
                     if (!valid) begin
                         next_state = START_BIT;
                     end else begin
                         next_state = ERROR;
                     end
-                end else if (synced_data_out_ack == 1'b1) begin  // Give processing priority
+                end else if (data_out_ack_synced) begin  // Give processing priority
                     next_state = DATA_OUT_ACKED;
                 end
             end
             START_BIT: begin
                 if (baud_pulse) begin
                     // Valid start bit detected
-                    if (synced_rx == 1'b0) begin
+                    if (!rx_synced) begin
                         next_state = DATA_BITS;
                     end else begin
                         next_state = ERROR;
@@ -142,7 +149,7 @@ module uart_receiver #(
             STOP_BITS: begin
                 if (baud_pulse) begin
                     // Valid stop bit detected
-                    if (synced_rx == 1'b1) begin
+                    if (rx_synced) begin
                         next_state = OUTPUT_DATA;
                     end else begin
                         next_state = ERROR;
@@ -158,13 +165,13 @@ module uart_receiver #(
             ERROR: begin
                 next_state = IDLE;
             end
-            default: next_state = IDLE;
+            default: next_state = ERROR;
         endcase
     end
 
     // UART Receiver Logic
     always_ff @(posedge clk) begin
-        case (current_state)
+        case (state)
             RESET: begin
                 data_out <= 0;
                 valid <= 0;
@@ -185,7 +192,7 @@ module uart_receiver #(
             DATA_BITS: begin
                 // Shift all data bits into shift register
                 if (baud_pulse) begin
-                    shift_reg <= {synced_rx, shift_reg[7:1]};  // Use right shift to first bit becomes LSB
+                    shift_reg <= {rx_synced, shift_reg[7:1]};  // Use right shift to first bit becomes LSB
                     data_counter <= data_counter + 1;
                 end
             end

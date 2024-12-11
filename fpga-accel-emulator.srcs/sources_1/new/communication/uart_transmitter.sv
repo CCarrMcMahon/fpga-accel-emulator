@@ -13,14 +13,14 @@
  * @input start   Signal to start the transmission.
  * @input data_in The byte of data to be transmitted.
  *
+ * @output tx          UART transmit data output.
  * @output data_in_ack Acknowledgment signal indicating that the data has been stored.
  * @output busy        Indicates that the transmitter is busy.
- * @output tx          UART transmit data output.
  *
  * The module uses a state machine to manage the transmission process, which includes the following states:
  * - RESET: Initial state, waiting for the `rx` signal to be high.
  * - IDLE: Waiting for the start signal.
- * - STORE_DATA: Storing the data to be transmitted.
+ * - START: Preparing the module for transmission.
  * - START_BIT: Sending the start bit.
  * - DATA_BITS: Transmitting the data bits.
  * - STOP_BITS: Sending the stop bit.
@@ -32,37 +32,43 @@ module uart_transmitter #(
     parameter int ClkFreq  = 100_000_000,
     parameter int BaudRate = 9600
 ) (
+    // Control Signals
     input logic clk,
     input logic resetn,
     input logic start,
+
+    // Data Input Signals
     input logic [7:0] data_in,
+
+    // Data Output Signals
+    output logic tx,
     output logic data_in_ack,
-    output logic busy,
-    output logic tx
+
+    // Status Signals
+    output logic busy
 );
     // States
     typedef enum logic [2:0] {
         RESET,
         IDLE,
-        STORE_DATA,
+        START,
         START_BIT,
         DATA_BITS,
         STOP_BITS
     } state_t;
-    state_t current_state, next_state;
+    state_t state, next_state;
 
     // Internal signals
     logic clear_baud_gen;
     logic baud_pulse;
-    logic synced_start;
+    logic start_synced;
     logic [3:0] data_counter;
     logic [7:0] shift_reg;
 
     // Instantiate a pulse generator for the baud rate clock
     pulse_generator #(
         .ClkInFreq(ClkFreq),
-        .PulseOutFreq(BaudRate),
-        .PhaseShift(0.0)
+        .PulseOutFreq(BaudRate)
     ) baud_gen (
         .clk_in(clk),
         .resetn(resetn),
@@ -75,31 +81,31 @@ module uart_transmitter #(
         .clk(clk),
         .resetn(resetn),
         .async_signal(start),
-        .sync_signal(synced_start)
+        .sync_signal(start_synced)
     );
 
     // State Machine Transitions
     always_ff @(posedge clk or negedge resetn) begin
         if (!resetn) begin
-            current_state <= RESET;
+            state <= RESET;
         end else begin
-            current_state <= next_state;
+            state <= next_state;
         end
     end
 
     // State Machine Logic
     always_comb begin
-        next_state = current_state;
-        case (current_state)
+        next_state = state;
+        case (state)
             RESET: begin
                 next_state = IDLE;
             end
             IDLE: begin
-                if (synced_start) begin
-                    next_state = STORE_DATA;
+                if (start_synced) begin
+                    next_state = START;
                 end
             end
-            STORE_DATA: begin
+            START: begin
                 next_state = START_BIT;
             end
             START_BIT: begin
@@ -119,7 +125,7 @@ module uart_transmitter #(
 
     // UART Transmitter Logic
     always_ff @(posedge clk) begin
-        case (current_state)
+        case (state)
             RESET: begin
                 data_in_ack <= 0;
                 busy <= 0;
@@ -137,7 +143,7 @@ module uart_transmitter #(
                 data_counter <= 0;
                 shift_reg <= 0;
             end
-            STORE_DATA: begin
+            START: begin
                 // Store data in the shift register to avoid it changing
                 shift_reg <= data_in;
 
