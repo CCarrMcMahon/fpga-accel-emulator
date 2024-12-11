@@ -13,9 +13,9 @@
  * @input rx           UART receive data input.
  * @input data_out_ack Acknowledgment signal indicating that the data has been read.
  *
- * @output data_out   The received byte of data.
- * @output valid      Indicates that a new byte of data is available.
- * @output data_error Indicates an error in the received data (e.g., framing error).
+ * @output data_out The received byte of data.
+ * @output valid    Indicates that a new byte of data is available.
+ * @output error    Indicates an error in the received data (e.g., framing error).
  *
  * The module uses a state machine to manage the reception process, which includes the following states:
  * - RESET: Waiting for the `rx` signal to be high after a reset condition.
