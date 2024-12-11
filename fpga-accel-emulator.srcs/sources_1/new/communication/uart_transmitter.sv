@@ -2,15 +2,16 @@
  * @module uart_transmitter
  * @brief UART Transmitter Module
  *
- * This module implements a UART transmitter that sends serial data through the `tx` output. The module operates at a configurable baud rate and clock frequency.
+ * This module implements a UART transmitter that sends serial data through the `tx` output. The module operates at a
+ * configurable baud rate and clock frequency.
  *
  * @param ClkFreq  The frequency of the input clock in Hz (default: 100 MHz).
- * @param BaudRate The desired baud rate for UART communication (default: 9600).
+ * @param BaudRate The desired baud rate for UART communication (default: 9600 Hz).
  *
- * @input clk       The system clock input.
- * @input resetn    Active-low reset signal.
- * @input start     Signal to start the transmission.
- * @input data_in   The byte of data to be transmitted.
+ * @input clk     The system clock input.
+ * @input resetn  Active-low reset signal.
+ * @input start   Signal to start the transmission.
+ * @input data_in The byte of data to be transmitted.
  *
  * @output data_in_ack Acknowledgment signal indicating that the data has been stored.
  * @output busy        Indicates that the transmitter is busy.
@@ -25,7 +26,7 @@
  * - STOP_BITS: Sending the stop bit.
  *
  * The module also includes internal logic for synchronizing the `start` signal and a pulse generator for generating the
- * baud rate clock.
+ * clock for the baud rate.
  */
 module uart_transmitter #(
     parameter int ClkFreq  = 100_000_000,

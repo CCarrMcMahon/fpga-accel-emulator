@@ -111,7 +111,7 @@ def loop_send_uart_input(com_port: str, baudrate: int = 9600) -> None:
             # Check for a response from UART
             response = b""
             while True:
-                time.sleep((time_per_byte * data_byte_len) * 20)
+                time.sleep((time_per_byte * data_byte_len) * 15)
                 if not ser.in_waiting:
                     break
                 response += ser.read(ser.in_waiting)

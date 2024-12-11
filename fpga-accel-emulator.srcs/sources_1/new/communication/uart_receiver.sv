@@ -13,9 +13,9 @@
  * @input rx           UART receive data input.
  * @input data_out_ack Acknowledgment signal indicating that the data has been read.
  *
- * @output data_out       The received byte of data.
- * @output data_out_ready Indicates that a new byte of data is available.
- * @output data_error     Indicates an error in the received data (e.g., framing error).
+ * @output data_out The received byte of data.
+ * @output valid    Indicates that a new byte of data is available.
+ * @output error    Indicates an error in the received data (e.g., framing error).
  *
  * The module uses a state machine to manage the reception process, which includes the following states:
  * - RESET: Waiting for the `rx` signal to be high after a reset condition.
@@ -39,7 +39,7 @@ module uart_receiver #(
     input logic rx,
     input logic data_out_ack,
     output logic [7:0] data_out,
-    output logic data_out_ready,
+    output logic valid,
     output logic error
 );
     // States
@@ -112,9 +112,9 @@ module uart_receiver #(
             end
             IDLE: begin
                 // Start bit detected
-                if (synced_rx == 1'b0) begin
+                if (!synced_rx) begin
                     // Previous data has been processed
-                    if (data_out_ready == 1'b0) begin
+                    if (!valid) begin
                         next_state = START_BIT;
                     end else begin
                         next_state = ERROR;
@@ -167,7 +167,7 @@ module uart_receiver #(
         case (current_state)
             RESET: begin
                 data_out <= 0;
-                data_out_ready <= 0;
+                valid <= 0;
                 error <= 0;
                 clear_baud_gen <= 1;
                 data_counter <= 0;
@@ -194,11 +194,11 @@ module uart_receiver #(
             end
             OUTPUT_DATA: begin
                 data_out <= shift_reg;
-                data_out_ready <= 1;
+                valid <= 1;
             end
             DATA_OUT_ACKED: begin
                 data_out <= 0;
-                data_out_ready <= 0;
+                valid <= 0;
                 error <= 0;
             end
             ERROR: begin
